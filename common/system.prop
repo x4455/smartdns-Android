@@ -1,0 +1,13 @@
+net.change=net.dns1
+net.dns1=127.0.0.1
+net.dns3=::1
+net.rmnet0.dns1=127.0.0.1
+net.rmnet0.dns3=::1
+net.rmnet1.dns1=127.0.0.1
+net.rmnet1.dns3=::1
+net.pdpbr1.dns1=127.0.0.1
+net.pdpbr1.dns3=::1
+net.eth0.dns1=127.0.0.1
+net.eth0.dns3=::1
+net.wlan0.dns1=127.0.0.1
+net.wlan0.dns3=::1
