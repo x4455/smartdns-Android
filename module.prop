@@ -1,6 +1,6 @@
 id=smartdns
 name=Smartdns
-version=v0.2.1 (<VER>)
+version=0.2.2 (<VER>)
 versionCode=2
-author=DuhaPT & x4455
-description=Smartdns 模块带翻墙版，增加 DNS 解析准确度，用 hosts 解决 DNS 污染。（或许还能直连，容易失效）
+author=x4455
+description=DNS并行查询，返回访问最快IP

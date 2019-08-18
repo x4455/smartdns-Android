@@ -93,7 +93,7 @@ print_modname() {
   ui_print "*******************************"
   ui_print " Smartdns"
   ui_print " $version"
-  ui_print " By DuhaPT & x4455"
+  ui_print " By x4455"
   ui_print "*******************************"
 }
 
@@ -116,6 +116,7 @@ on_install() {
 
 # Script by x4455 @ github
 install_smartdns() {
+  [ "$ARCH" != 'arm64' ] && abort 'Only arm64 is supported'
 
   BINARY_PATH=$TMPDIR/smartdns
   EXAMPLE_CONFIG_PATH=$TMPDIR/config

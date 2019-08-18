@@ -6,25 +6,24 @@
 
 [ -f /proc/net/ip6_tables_names ] && { ipt_setIPv6='true'; }||{ ipt_setIPv6='false'; }
 
-MODPATH=/data/adb/modules/dnscrypt-proxy
+MODPATH=/data/adb/modules/smartdns
 source $MODPATH/constant.sh
 
 function gconf(){ grep $1 $CONFIG; }
 
-IPv4_LISTEN_PORT="6453"
-IPv6_LISTEN_PORT="6453"
-RESOLVER="9.9.9.9"
+V4LPT=6453
+V6LPT=6453
 
 ### Load iptables rules
 
-function ip4trules_load()
+function iptrules_load()
 {
- IPS=$1;
+ IPT=$1; IPS=$2; LIP=$3; LPT=$4
   for IPP in 'udp' 'tcp'
   do
-    echo "IPTABLES $IPP $IPv4_LISTEN_PORT $IPS"
-    $IPTABLES -t nat $IPS OUTPUT -p $IPP ! -d $RESOLVER --dport 53 -j DNAT --to-destination 127.0.0.1:$IPv4_LISTEN_PORT
-    $IPTABLES -t nat $IPS OUTPUT -p $IPP -m owner --uid-owner 0 --dport 53 -j ACCEPT
+    echo "$IPT $IPS $IPP $LPT"
+    $IPT -t nat $IPS OUTPUT -p $IPP --dport 53 -j DNAT --to-destination $LIP:$LPT
+    $IPT -t nat $IPS OUTPUT -p $IPP -m owner --uid-owner 0 --dport 53 -j ACCEPT
   done
 }
 
@@ -32,14 +31,10 @@ function ip6trules_load()
 {
  IPS=$1;
   if [ "$ipt_setIPv6" == 'true' ]; then
-    if [ "$ipt_blockIPv6" == "true" ]; then
+    if [ "$ipt_blockIPv6" == 'true' ]; then
       blockIPv6 $IPS
     else
-      for IPP in 'udp' 'tcp'
-      do
-        echo "IP6TABLES $IPP $IPv6_LISTEN_PORT $IPS"
-        $IP6TABLES -t nat $IPS OUTPUT -p $IPP --dport 53 -j DNAT --to-destination [::1]:$IPv6_LISTEN_PORT
-      done
+      iptrules_load $IP6TABLES $IPS '[::1]' $V6LPT
     fi
   else
     echo 'Skip IPv6'
@@ -73,14 +68,14 @@ function core_check()
 # Main
 function iptrules_on()
 {
-  ip4trules_load '-I'
+  iptrules_load $IPTABLES '-I' '127.0.0.1' $V4LPT
   ip6trules_load '-I'
 }
 
 function iptrules_off()
 {
   while iptrules_check; do
-    ip4trules_load '-D'
+    iptrules_load $IPTABLES '-D' '127.0.0.1' $V4LPT
     ip6trules_load '-D'
   done
 }
@@ -91,9 +86,8 @@ function core_start()
 {
   core_check && killall $CORE_BINARY
   sleep 1
-  echo "- Core online $(date +'%d|%r')"
+  echo "- Start working $(date +'%d/%r')"
   $CORE_BOOT &
-  sleep 12
 }
 
 ### Processing options
@@ -105,19 +99,19 @@ function core_start()
     if core_check; then
       iptrules_on
     else
-      echo '(!)Fails:Core is not working'; exit 1
+      echo '(!)Fails:Core not working'; exit 1
     fi
   ;;
   # Boot Core only
   -start-core)
     core_start
     if [ ! core_check ]; then
-      echo '(!)Fails:Core is not working'; exit 1
+      echo '(!)Fails:Core not working'; exit 1
     fi
   ;;
   # Stop
   -stop)
-    echo '- Stop proxy'
+    echo '- Stoping'
     iptrules_off
     killall $CORE_BINARY
     echo '- Done'
@@ -136,11 +130,11 @@ function core_start()
 cat <<EOD
 Usage:
  -start
-   Start service
+   Start Service
  -stop
-   Stop service
+   Stop Service
  -status
-   Proxy Status
+   Service Status
  -start-core
    Boot core only
  -reset-rules
@@ -156,6 +150,10 @@ EOD
     blockIPv6 '-D'
     killall $CORE_BINARY
   echo '- Done'
+  ;;
+  # Pass command
+  *)
+    $CORE_PATH $*
   ;;
  esac
 exit 0

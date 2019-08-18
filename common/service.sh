@@ -19,7 +19,7 @@ set -x
 }
 for TARGET in $ClearList
 do
-  rm ${CONFIG%/*}/$TARGET
+  rm $MODDIR/$TARGET
 done
 log
 
