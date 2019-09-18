@@ -116,9 +116,13 @@ on_install() {
 
 # Script by x4455 @ github
 install_smartdns() {
-  [ "$ARCH" != 'arm64' ] && abort 'Only arm64 is supported'
+  case $ARCH in
+  arm|arm64|x86|x64)
+    BINARY_PATH=$TMPDIR/smartdns-$ARCH;;
+  *)
+    abort "(!) $ARCH are unsupported architecture"
+  esac
 
-  BINARY_PATH=$TMPDIR/smartdns
   EXAMPLE_CONFIG_PATH=$TMPDIR/config
 
   unzip -o "$ZIPFILE" 'config/*' -d $TMPDIR >&2
@@ -137,12 +141,11 @@ install_smartdns() {
     abort "(!) $ARCH Binary file missing"
   fi
 
-    mkdir -p $MODPATH/$CONFIG 2>/dev/null
+    mkdir -p $MODPATH/${CONFIG%/*} 2>/dev/null
     ui_print "- Copy the example config file"
-    cp -rf $EXAMPLE_CONFIG_PATH/* $MODPATH/$CONFIG
+    cp -rf $EXAMPLE_CONFIG_PATH/* $MODPATH/${CONFIG%/*}
 # Set files
   cp -af $TMPDIR/constant.sh $MODPATH/constant.sh
-  sed -i -e "s/\(^MODPATH\=\).*$/\1${OLDDIR//\//\\\/}/" $TMPDIR/script.sh
   cp -af $TMPDIR/script.sh $MODPATH/system/xbin/smartdns
   cp -af $BINARY_PATH $MODPATH/$CORE_BINARY
 }

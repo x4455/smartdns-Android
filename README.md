@@ -7,48 +7,13 @@ SmartDNS是一个运行在本地的DNS服务器，SmartDNS接受本地客户端�
 
 详情请看[官方文档](https://github.com/pymumu/smartdns/blob/master/ReadMe.md)
 
-## 特性
-
-1. **多DNS上游服务器**  
-   支持配置多个上游DNS服务器，并同时进行查询，即使其中有DNS服务器异常，也不会影响查询。  
-
-1. **返回最快IP地址**  
-   支持从域名所属IP地址列表中查找到访问速度最快的IP地址，并返回给客户端，避免DNS污染，提高网络访问速度。
-
-1. **支持多种查询协议**  
-   支持UDP，TCP，TLS, HTTPS查询，以及非53端口查询，有效避免DNS污染。
-
-1. **特定域名IP地址指定**  
-   支持指定域名的IP地址，达到广告过滤效果，避免恶意网站的效果。
-
-1. **域名高性能后缀匹配**  
-   支持域名后缀匹配模式，简化过滤配置，过滤20万条记录时间<1ms
-
-1. **域名分流**  
-   支持域名分流，不同类型的域名到不同的DNS服务器查询。
-
-1. **支持IPV4, IPV6双栈**  
-   支持IPV4，IPV6网络，支持查询A, AAAA记录，支持双栈IP速度优化，并支持完全禁用IPV6 AAAA解析。
-
-1. **高性能，占用资源少**  
-   多线程异步IO模式，cache缓存查询结果。
-
-## 工作原理
-
-![Architecture](https://raw.github.com/pymumu/smartdns/master/doc/architecture.png)
-
-1. SmartDNS接收本地网络设备的DNS查询请求，如PC，手机的查询请求。  
-2. SmartDNS将查询请求发送到多个上游DNS服务器，可采用标准UDP查询，非标准端口UDP查询，及TCP查询。  
-3. 上游DNS服务器返回域名对应的Server IP地址列表。SmartDNS检测与本地网络访问速度最快的Server IP。  
-4. 将访问速度最快的Server IP返回给本地客户端。  
-
 ## 使用
 
-   配置位于/system/etc/smartdns/smartdns.conf
+### 配置位于/system/etc/smartdns/smartdns.conf
 
-    安装完成后，可配置smartdns的上游服务器信息。具体配置参数参考`配置参数`说明。  
-    一般情况下，只需要增加`server [IP]:port`, `server-tcp [IP]:port`配置项，
-    尽可能配置多个上游DNS服务器，包括国内外的服务器。配置参数请查看`配置参数`章节。
+安装完成后，可配置smartdns的上游服务器信息。具体配置参数参考`配置参数`说明。  
+一般情况下，只需要增加`server [IP]:port`, `server-tcp [IP]:port`配置项，
+尽可能配置多个上游DNS服务器，包括国内外的服务器。配置参数请查看`配置参数`章节。
 
 ## 配置参数
 

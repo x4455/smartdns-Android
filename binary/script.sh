@@ -5,47 +5,43 @@
 [[ $(id -u) -ne 0 ]] && { echo "! Need root !"; exit 1; }
 
 [ -f /proc/net/ip6_tables_names ] && { ipt_setIPv6='true'; }||{ ipt_setIPv6='false'; }
+V4LPT=53
+V6LPT=53
 
 MODPATH=/data/adb/modules/smartdns
 source $MODPATH/constant.sh
-
-function gconf(){ grep $1 $CONFIG; }
-
-V4LPT=6453
-V6LPT=6453
 
 ### Load iptables rules
 
 function iptrules_load()
 {
- IPT=$1; IPS=$2; LIP=$3; LPT=$4
+ IPS=$2; LIP=$3; LPT=$4
   for IPP in 'udp' 'tcp'
   do
-    echo "$IPT $IPS $IPP $LPT"
-    $IPT -t nat $IPS OUTPUT -p $IPP --dport 53 -j DNAT --to-destination $LIP:$LPT
-    $IPT -t nat $IPS OUTPUT -p $IPP -m owner --uid-owner 0 --dport 53 -j ACCEPT
+    echo "$1 $IPS $IPP $LPT"
+    $1 -t nat $IPS OUTPUT -p $IPP --dport 53 -j DNAT --to-destination $LIP:$LPT
+    $1 -t nat $IPS OUTPUT -p $IPP -m owner --uid-owner 0 --dport 53 -j ACCEPT
   done
 }
 
 function ip6trules_load()
 {
- IPS=$1;
   if [ "$ipt_setIPv6" == 'true' ]; then
     if [ "$ipt_blockIPv6" == 'true' ]; then
-      blockIPv6 $IPS
+      echo "Block IPv6 $1"
+      block_rules $IP6TABLES $1 53
     else
-      iptrules_load $IP6TABLES $IPS '[::1]' $V6LPT
+      iptrules_load $IP6TABLES $1 '[::1]' $V6LPT
     fi
   else
     echo 'Skip IPv6'
   fi
 }
 
-function blockIPv6()
+function block_rules()
 {
- echo "Block IPv6 $1";
-  $IP6TABLES -t filter $1 OUTPUT -p udp --dport 53 -j DROP
-  $IP6TABLES -t filter $1 OUTPUT -p tcp --dport 53 -j REJECT --reject-with tcp-reset
+  $1 -t filter $2 OUTPUT -p udp --dport $3 -j DROP
+  $1 -t filter $2 OUTPUT -p tcp --dport $3 -j REJECT --reject-with tcp-reset
 }
 
 # Check rules
@@ -85,7 +81,7 @@ function iptrules_off()
 function core_start()
 {
   core_check && killall $CORE_BINARY
-  sleep 1
+  sleep 3
   echo "- Start working $(date +'%d/%r')"
   $CORE_BOOT &
 }
@@ -147,9 +143,9 @@ EOD
     iptables -t nat -F OUTPUT
     ip6tables -t nat -F OUTPUT
     sleep 1
-    blockIPv6 '-D'
+    block_rules $IP6TABLES '-D' 53
     killall $CORE_BINARY
-  echo '- Done'
+    echo '- Done'
   ;;
   # Pass command
   *)
