@@ -2,13 +2,18 @@
 V4LPT=6453
 V6LPT=53
 
-# If you device are not supported "IPv6 nat", set this option to "false"
-# and remove IPv6 from "listen_addresses" in the config file.
-#####
-#ipt_setIPv6=false
+# iptables block port 53 INPUT #
+ipt_block_INPUT=false
+whitelist="
+119.29.29.29
+180.76.76.76
+223.5.5.5
+"
 
+# If you device are not supported "IPv6 nat", set this option to "true"
+# and remove IPv6 from "listen_addresses" in the config file.
 # iptables block IPv6 port 53 #
-ipt_blockIPv6=true
+ipt_block_IPv6_OUTPUT=false
 
 ClearList="
 smartdns.log

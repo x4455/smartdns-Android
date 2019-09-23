@@ -22,12 +22,10 @@ do
  sleep 20
  ((RETRY--))
 done
-
-RETRY=5
-sleep 10
 log
 
-until (("$RETRY" < "60"))
+RETRY=5
+until (("$RETRY" > "40"))
 do
  ping -c 1 1.0.0.1
  if [ "$?" == '0' ]; then
@@ -38,9 +36,8 @@ do
  fi
 done
 
-echo ""
-echo "Start - $(date +'%d / %r')"
+echo "- Start : $(date +'%d / %r')"
 /system/bin/sh /system/xbin/smartdns -start
-echo "End - $(date +'%d / %r')"
+echo "- End : $(date +'%d / %r')"
 
 exit 0

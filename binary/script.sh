@@ -4,9 +4,9 @@
 [[ "$#" -eq 0 ]] && { echo "! Null input !"; exit 1; }
 [[ $(id -u) -ne 0 ]] && { echo "! Need root !"; exit 1; }
 
-[ -f /proc/net/ip6_tables_names ] && { ipt_setIPv6='true'; }||{ ipt_setIPv6='false'; }
-V4LPT=53
-V6LPT=53
+V4LPT=53; V6LPT=53
+ipt_block_INPUT=false
+ipt_block_IPv6_OUTPUT=false
 
 MODPATH=/data/adb/modules/smartdns
 source $MODPATH/constant.sh
@@ -19,29 +19,42 @@ function iptrules_load()
   for IPP in 'udp' 'tcp'
   do
     echo "$1 $IPS $IPP $LPT"
-    $1 -t nat $IPS OUTPUT -p $IPP --dport 53 -j DNAT --to-destination $LIP:$LPT
-    $1 -t nat $IPS OUTPUT -p $IPP -m owner --uid-owner 0 --dport 53 -j ACCEPT
+    $1 -t nat $IPS PREROUTING -p $IPP --dport 53 -j DNAT --to-destination $LIP:$LPT
+    $1 -t nat $IPS PREROUTING -p $IPP -m owner --uid-owner 0 --dport 53 -j ACCEPT
   done
+  if [ "$ipt_block_INPUT" == 'true' ]; then
+    echo "Block INPUT $IPS"
+    block_rules $IPTABLES $IPS INPUT 53
+    block_rules $IP6TABLES $IPS INPUT 53
+    if [ -n "$(echo $whitelist | grep -E '([0-255]\.){3}[0-255]')" ]; then
+      accept_rules $IPTABLES $IPS INPUT 53
+    fi
+  fi
 }
 
 function ip6trules_load()
 {
-  if [ "$ipt_setIPv6" == 'true' ]; then
-    if [ "$ipt_blockIPv6" == 'true' ]; then
-      echo "Block IPv6 $1"
-      block_rules $IP6TABLES $1 53
-    else
-      iptrules_load $IP6TABLES $1 '[::1]' $V6LPT
-    fi
+  if [ "$ipt_block_IPv6_OUTPUT" == 'true' ]; then
+    echo "Block IPv6 OUTPUT $1"
+    block_rules $IP6TABLES $1 OUTPUT 53
   else
-    echo 'Skip IPv6'
+    iptrules_load $IP6TABLES $1 '[::1]' $V6LPT
   fi
+}
+
+function accept_rules()
+{
+for IP in $whitelist
+do
+  $1 -t filter $2 $3 -p udp -d $IP --dport $4 -j ACCEPT
+  $1 -t filter $2 $3 -p tcp -d $IP --dport $4 -j ACCEPT
+done
 }
 
 function block_rules()
 {
-  $1 -t filter $2 OUTPUT -p udp --dport $3 -j DROP
-  $1 -t filter $2 OUTPUT -p tcp --dport $3 -j REJECT --reject-with tcp-reset
+  $1 -t filter $2 $3 -p udp --dport $4 -j DROP
+  $1 -t filter $2 $3 -p tcp --dport $4 -j REJECT --reject-with tcp-reset
 }
 
 # Check rules
@@ -50,8 +63,8 @@ function iptrules_check()
  r=0
   for IPP in 'udp' 'tcp'
   do
-    [ -n "`$IPTABLES -n -t nat -L OUTPUT | grep "DNAT.*$IPP.*dpt:53.*to:"`" ] && ((r++))
-    [ -n "`$IPTABLES -n -t nat -L OUTPUT | grep "ACCEPT.*$IPP.*owner.*UID.*dpt:53"`" ] && ((r++))
+    [ -n "`$IPTABLES -n -t nat -L PREROUTING | grep "DNAT.*$IPP.*dpt:53.*to:"`" ] && ((r++))
+    [ -n "`$IPTABLES -n -t nat -L PREROUTING | grep "ACCEPT.*$IPP.*owner.*UID.*dpt:53"`" ] && ((r++))
   done
 [ $r -gt 0 ] && return 0
 }
@@ -81,9 +94,12 @@ function iptrules_off()
 function core_start()
 {
   core_check && killall $CORE_BINARY
-  sleep 3
-  echo "- Start working $(date +'%d/%r')"
+  sleep 1
+  echo "- Starting $(date +'%d/%r')"
   $CORE_BOOT &
+  if [ ! core_check ]; then
+    echo '(!) Fails: Core not working'; exit 1
+  fi
 }
 
 ### Processing options
@@ -94,16 +110,11 @@ function core_start()
     core_start
     if core_check; then
       iptrules_on
-    else
-      echo '(!)Fails:Core not working'; exit 1
     fi
   ;;
   # Boot Core only
   -start-core)
     core_start
-    if [ ! core_check ]; then
-      echo '(!)Fails:Core not working'; exit 1
-    fi
   ;;
   # Stop
   -stop)
@@ -133,17 +144,21 @@ Usage:
    Service Status
  -start-core
    Boot core only
- -reset-rules
+ -reset
    Reset iptables
 EOD
   ;;
 #### Advanced Features
   # Clean iptables rules
-  -reset-rules)
+  -reset)
     iptables -t nat -F OUTPUT
     ip6tables -t nat -F OUTPUT
     sleep 1
-    block_rules $IP6TABLES '-D' 53
+    iptables -t filter -F INPUT
+    ip6tables -t filter -F INPUT
+    sleep 1
+    iptables -t filter -F OUTPUT
+    ip6tables -t filter -F OUTPUT
     killall $CORE_BINARY
     echo '- Done'
   ;;
