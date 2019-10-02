@@ -9,7 +9,7 @@ SmartDNS是一个运行在本地的DNS服务器，SmartDNS接受本地客户端�
 
 ## 使用
 
-### 配置位于/system/etc/smartdns/smartdns.conf
+### 配置位于/data/media/0/smartdns/config/smartdns.conf
 
 安装完成后，可配置smartdns的上游服务器信息。具体配置参数参考`配置参数`说明。  
 一般情况下，只需要增加`server [IP]:port`, `server-tcp [IP]:port`配置项，
