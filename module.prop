@@ -1,6 +1,6 @@
 id=smartdns
 name=Smartdns
-version=0.2.5 (<VER>)
-versionCode=25
+version=1.7(<VER>)
+versionCode=191019
 author=x4455
 description=DNS并行查询，返回访问最快IP

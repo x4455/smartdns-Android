@@ -9,7 +9,7 @@ SmartDNS是一个运行在本地的DNS服务器，SmartDNS接受本地客户端�
 
 ## 使用
 
-### 配置位于/data/media/0/smartdns/config/smartdns.conf
+### 配置位于/sdcard/smartdns/smartdns.conf
 
 安装完成后，可配置smartdns的上游服务器信息。具体配置参数参考`配置参数`说明。  
 一般情况下，只需要增加`server [IP]:port`, `server-tcp [IP]:port`配置项，
@@ -28,11 +28,11 @@ SmartDNS是一个运行在本地的DNS服务器，SmartDNS接受本地客户端�
 |rr-ttl-min|允许的最小TTL值|远程查询结果|大于0的数字|rr-ttl-min 60
 |rr-ttl-max|允许的最大TTL值|远程查询结果|大于0的数字|rr-ttl-max 600
 |log-level|设置日志级别|error|fatal,error,warn,notice,info,debug|log-level error
-|log-file|日志文件路径|/var/log/smartdns.log|路径|log-file /var/log/smartdns.log
+|log-file|日志文件路径|/dev/smartdns_root/log/smartdns.log|路径|log-file /dev/smartdns_root/log/smartdns.log
 |log-size|日志大小|128K|数字+K,M,G|log-size 128K
 |log-num|日志归档个数|2|数字|log-num 2
 |audit-enable|设置审计启用|no|[yes\|no]|audit-enable yes
-|audit-file|审计文件路径|/var/log/smartdns-audit.log|路径|audit-file /var/log/smartdns-audit.log
+|audit-file|审计文件路径|/dev/smartdns_root/log/smartdns-audit.log|路径|audit-file /dev/smartdns_root/log/smartdns-audit.log
 |audit-size|审计大小|128K|数字+K,M,G|audit-size 128K
 |audit-num|审计归档个数|2|数字|audit-num 2
 |conf-file|附加配置文件|无|文件路径|conf-file /etc/smartdns/smartdns.more.conf
@@ -55,11 +55,12 @@ SmartDNS是一个运行在本地的DNS服务器，SmartDNS接受本地客户端�
 
 ## 感谢
 
-- SmartDNS | [pymumu](https://github.com/pymumu/smartdns)
+- [SmartDNS](https://github.com/pymumu/smartdns) | pymumu
+- [ClashForMagisk](https://github.com/Kr328/ClashForMagisk) | Kr328
 
 ## 捐赠
 
-如果你觉得此项目对你有帮助，请捐助他们，以使项目能持续发展，更加完善。
+如果你觉得 Smartdns 对你有帮助，请捐助他们，以使项目能持续发展，更加完善。
 
 ### PayPal
 
@@ -83,4 +84,4 @@ SmartDNS是一个运行在本地的DNS服务器，SmartDNS接受本地客户端�
 
 ## 说明
 
-目前核心代码未开源。
+# 核心代码未开源，担心后门勿用

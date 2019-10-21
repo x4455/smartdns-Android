@@ -109,7 +109,6 @@ on_install() {
 	ui_print "***************"
 	}
 
-	unzip -oj "$ZIPFILE" 'binary/*' -d $TMPDIR >&2
 	unzip -o "$ZIPFILE" 'config/*' -d $TMPDIR >&2
 
 	install_smartdns
@@ -124,13 +123,7 @@ install_smartdns() {
 		abort "(!) $ARCH are unsupported architecture"
 	esac
 
-	imageless_magisk && { CONSTANT="$NVBASE/modules/$MODID/constant.sh"; }||{ CONSTANT="/sbin/.magisk/img/$MODID/constant.sh"; }
-	if [ ! -e $CONSTANT ]; then
-		CONSTANT=$TMPDIR/constant.sh
-	else
-		source $TMPDIR/constant.sh
-	fi
-	source $CONSTANT
+	source $TMPDIR/constant.sh
 
 	OLD_CONFIG=${CONFIG%/*}
 	NEW_CONFIG=$OLD_CONFIG
@@ -152,8 +145,6 @@ install_smartdns() {
 		mkdir -p $NEW_CONFIG 2>/dev/null
 		ui_print "- Copy the example config file"
 		cp -rf $EXAMPLE_CONFIG/* $NEW_CONFIG
-	else
-		cp -f $EXAMPLE_CONFIG/smartdns.conf $NEW_CONFIG/example-smartdns.conf
 	fi
 # Set files
 	cp -af $TMPDIR/constant.sh $MODPATH/constant.sh
@@ -165,7 +156,7 @@ install_smartdns() {
 set_permissions() {
   # The following is the default rule, DO NOT remove
 	set_perm_recursive $MODPATH 0 0 0755 0644
-	set_perm $MODPATH/$CORE_BINARY 0 2000 0755
+	set_perm $MODPATH/$CORE_BINARY 0 0 0755
 	set_perm_recursive $MODPATH/system/xbin 0 0 0755 0755
 
   # Here are some examples:
