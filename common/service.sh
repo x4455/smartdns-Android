@@ -1,7 +1,13 @@
 #!/system/bin/sh
-# Script by x4455 @ github
 MODDIR=${0%/*}
 source $MODDIR/constant.sh
+
+mkdir -p "$ROOT/log"
+mkdir -p "$CORE_DIR"
+mkdir -p "$DATA_DIR"
+
+mount -o bind "$CORE_INTERNAL_DIR" "$CORE_DIR"
+mount -o bind "$DATA_INTERNAL_DIR" "$DATA_DIR"
 
 while [[ ! -d "/sdcard/Android" ]]
 do
@@ -13,8 +19,6 @@ LOG_PATH="$MODDIR/boot.log"
   && rm $LOG_PATH
 exec 1>>$LOG_PATH 2>&1
 set -x
-
-echo "- Start : $(date +'%d / %r')"
 
 /system/bin/sh $MODDIR/system/xbin/smartdns -set
 

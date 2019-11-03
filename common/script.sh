@@ -1,78 +1,52 @@
 #!/system/bin/sh
 
-[[ "$#" -eq 0 ]] && { echo "! Null input !"; exit 1; }
-[[ $(id -u) -ne 0 ]] && { echo "! Need root !"; exit 1; }
+[[ "$#" -eq 0 ]] && { echo "script: no command specified\nTry \'-usage\' for more information."; exit 2; }
+[[ $(id -u) -ne 0 ]] && { echo "script: permission denied"; exit 1; }
 
 LPORT=6453
-ipt_block_IPv6_OUTPUT=true
+ipt_block_v6=true
 
+# 获取配置
 MODDIR="/data/adb/modules/smartdns"
 source $MODDIR/constant.sh
 
-
+ServerGID="`id -g $ServerUID`"
+ServerGROUPS="$ServerGID,$(id -g inet),$(id -g media_rw)"
+ServerUID="`id -u $ServerUID`"
 
 ## 防火墙
 # 主控
 function iptrules_on()
 {
-	iptrules_load $IPTABLES -I
-	ip6trules_load -A OUTPUT
+	iptrules_load $IPT -I
+	ip6trules_load -A
 }
 
 function iptrules_off()
 {
 	while iptrules_check; do
-		iptrules_load $IPTABLES -D
-		ip6trules_load -D OUTPUT
+		iptrules_load $IPT -D
+		ip6trules_load -D
 	done
 }
 
 function ip6trules_load()
 {
-	if [ "$ipt_block_IPv6_OUTPUT" == 'true' ]; then
-		block_load $IP6TABLES $1 $2
+	if [ "$ipt_block_v6" == 'true' ]; then
+		block_load $IP6T $1 OUTPUT
 	else
-		iptrules_load $IP6TABLES $1
+		iptrules_load $IP6T $1
 	fi
-}
-
-# 初始化
-function iptrules_set()
-{
-	echo "$1 Set up $2"
-	$1 -t nat -N DNS_LOCAL
-	$1 -t nat -N DNS_EXTERNAL
-
-	$1 -t nat -A DNS_LOCAL -m owner --uid-owner $UID -j RETURN
-	for IPP in 'udp' 'tcp'
-	do
-		$1 -t nat -A DNS_LOCAL -p $IPP ! --dport 53 -j RETURN
-		$1 -t nat -A DNS_LOCAL -p $IPP -j DNAT --to-destination $2:$LPORT
-
-		$1 -t nat -A DNS_EXTERNAL -p $IPP ! --dport 53 -j RETURN
-		$1 -t nat -A DNS_EXTERNAL -p $IPP -j DNAT --to-destination $2:$LPORT
-	done
-}
-
-# 清除规则
-function iptrules_reset()
-{
-	echo "Reset $1"
-	$1 -t nat -F DNS_LOCAL
-	$1 -t nat -X DNS_LOCAL
-
-	$1 -t nat -F DNS_EXTERNAL
-	$1 -t nat -X DNS_EXTERNAL
 }
 
 # 加载
 function iptrules_load()
 {
-	echo "$1 $2"
-	for IPP in 'udp' 'tcp'
+	echo "(i) $1 $2"
+	for IPP in $protocol
 	do
-		$1 -t nat $2 OUTPUT -p $IPP -j DNS_LOCAL
-		$1 -t nat $2 PREROUTING -p $IPP -j DNS_EXTERNAL
+		$1 -t nat $2 OUTPUT -p $IPP --dport 53 -j DNS_LOCAL
+		$1 -t nat $2 PREROUTING -p $IPP --dport 53 -j DNS_EXTERNAL
 	done
 }
 
@@ -82,13 +56,40 @@ function block_load()
 	$1 -t filter $2 $3 -p tcp --dport 53 -j REJECT --reject-with tcp-reset
 }
 
+# 初始化
+function iptrules_set()
+{
+	echo "(i) $1 iptrules set"
+	$1 -t nat -N DNS_LOCAL
+	$1 -t nat -N DNS_EXTERNAL
+
+	$1 -t nat -A DNS_LOCAL -m owner --uid-owner $ServerUID -j RETURN
+	for IPP in 'udp' 'tcp'
+	do
+		$1 -t nat -A DNS_LOCAL -p $IPP -j REDIRECT --to-ports $LPORT
+
+		$1 -t nat -A DNS_EXTERNAL -p $IPP -j REDIRECT --to-ports $LPORT
+	done
+}
+
+# 清除规则
+function iptrules_reset()
+{
+	echo "(i) $1 iptrules reset"
+	$1 -t nat -F DNS_LOCAL
+	$1 -t nat -X DNS_LOCAL
+
+	$1 -t nat -F DNS_EXTERNAL
+	$1 -t nat -X DNS_EXTERNAL
+}
+
 
 
 ## 检查
 # 防火墙规则
 function iptrules_check()
 {
-	[ -n "`$IPTABLES -n -t nat -L OUTPUT | grep "DNS_LOCAL"`" ] && return 0
+	[ -n "`$IPT -n -t nat -L OUTPUT | grep "DNS_LOCAL"`" ] && return 0
 }
 
 # 核心进程
@@ -105,14 +106,16 @@ function core_start()
 {
 	core_check && killall $CORE_BINARY
 	sleep 1
-	echo "- Starting [$(date +'%d/%r')]"
-	$CORE_BOOT &
+	$CORE_DIR/setuidgid $ServerUID $ServerGID $ServerGROUPS $CORE_BOOT 2>&1
 	sleep 1
 	if [ ! core_check ]; then
-		echo '(!) Fails: Core not working'; exit 1
+		echo '(!) ERROR: Server not working'
+		exit 1
+	else
+		echo "(i) Start [$(date +'%d/%r')]"
+		return 0
 	fi
 }
-
 
 
 
@@ -121,8 +124,7 @@ case $1 in
 	# 启动
 	-start)
 		iptrules_off
-		core_start
-		if core_check; then
+		if core_start; then
 			iptrules_on
 		fi
 	;;
@@ -134,16 +136,16 @@ case $1 in
 	# 检查状态
 	-status)
 		i=0;
-		core_check && { echo '< Core Online >'; }||{ echo '! Core Offline !'; i=`expr $i + 2`; }
-		iptrules_check && { echo '< iprules Enabled >'; }||{ echo '! iprules Disabled !'; i=`expr $i + 1`; }
+		core_check && { echo '< Server >'; }||{ echo '! Server Offline !'; i=`expr $i + 2`; }
+		iptrules_check && { echo '< iprules >'; }||{ echo '! iprules Disabled !'; i=`expr $i + 1`; }
 	case $i in
-	3)
+	3)  # 未工作
 	exit 11 ;;
-	2)
+	2)  # 核心
 	exit 01 ;;
-	1)
+	1)  # 防火墙
 	exit 10 ;;
-	0)
+	0)  # 工作中
 	exit 00 ;;
 	esac
 	;;
@@ -172,16 +174,18 @@ EOD
 ####
 	# 初始化规则
 	-set)
-		iptrules_set $IPTABLES '127.0.0.1'
-		iptrules_set $IP6TABLES '[::1]'
+		iptrules_set $IPT
+		if [ "$ipt_block_v6" == 'false' ]; then
+			iptrules_set $IP6T
+		fi
 	;;
 	# 清空规则
 	-reset)
-		iptrules_load $IPTABLES -D
+		iptrules_load $IPT -D
 		ip6trules_load -D OUTPUT
 
-		iptrules_reset $IPTABLES
-		iptrules_reset $IP6TABLES
+		iptrules_reset $IPT
+		iptrules_reset $IP6T
 		killall $CORE_BINARY
 	;;
 	# 命令透传

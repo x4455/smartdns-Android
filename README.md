@@ -5,23 +5,27 @@ SmartDNS是一个运行在本地的DNS服务器，SmartDNS接受本地客户端�
 同时支持指定特定域名IP地址，并高性匹配，达到过滤广告的效果。  
 与dnsmasq的all-servers不同，smartdns返回的是访问速度最快的解析结果。
 
+## 核心代码未开源
+
 详情请看[官方文档](https://github.com/pymumu/smartdns/blob/master/ReadMe.md)
 
 ## 使用
 
-### 配置位于/sdcard/smartdns/smartdns.conf
+### 配置位于 /sdcard/smartdns/smartdns.conf
 
-安装完成后，可配置smartdns的上游服务器信息。具体配置参数参考`配置参数`说明。  
+安装完成后，需要配置smartdns的上游服务器信息。具体配置参数参考`配置参数`说明。  
 一般情况下，只需要增加`server [IP]:port`, `server-tcp [IP]:port`配置项，
 尽可能配置多个上游DNS服务器，包括国内外的服务器。配置参数请查看`配置参数`章节。
+
+### 脚本配置位于 `/data/adb/modules/smartdns/constant.sh`
 
 ## 配置参数
 
 |参数|  功能  |默认值|配置值|例子|
 |--|--|--|--|--|
 |server-name|DNS服务器名称|操作系统主机名/smartdns|符合主机名规格的字符串|server-name smartdns
-|bind|DNS监听端口号|[::]:53|IP:PORT|bind 192.168.1.1:53
-|bind-tcp|TCP模式DNS监听端口号|[::]:53|IP:PORT|bind-tcp 192.168.1.1:53
+|bind|DNS监听端口号|[::]:53|可绑定多个端口<br>`IP:PORT`: 服务器IP，端口号。<br>`[-group]`: 请求时使用的DNS服务器组。<br>`[-no-rule-addr]`：跳过address规则。<br>`[-no-rule-nameserver]`：跳过Nameserver规则。<br>`[-no-rule-ipset]`：跳过Ipset规则。<br>`[no-rule-soa]`：跳过SOA(#)规则.<br>`[no-dualstack-selection]`：停用双栈测速。<br>`[-no-speed-check]`：停用测速。<br>`[-no-cache]`：停止缓存|bind :53
+|bind-tcp|TCP DNS监听端口号|[::]:53|可绑定多个端口<br>`IP:PORT`: 服务器IP，端口号。<br>`[-group]`: 请求时使用的DNS服务器组。<br>`[-no-rule-addr]`：跳过address规则。<br>`[-no-rule-nameserver]`：跳过Nameserver规则。<br>`[-no-rule-ipset]`：跳过Ipset规则。<br>`[no-rule-soa]`：跳过SOA(#)规则.<br>`[no-dualstack-selection]`：停用双栈测速。<br>`[-no-speed-check]`：停用测速。<br>`[-no-cache]`：停止缓存|bind-tcp :53
 |cache-size|域名结果缓存个数|512|数字|cache-size 512
 |tcp-idle-time|TCP链接空闲超时时间|120|数字|tcp-idle-time 120
 |rr-ttl|域名结果TTL|远程查询结果|大于0的数字|rr-ttl 600
@@ -66,22 +70,10 @@ SmartDNS是一个运行在本地的DNS服务器，SmartDNS接受本地客户端�
 
 [![Support via PayPal](https://cdn.rawgit.com/twolfson/paypal-github-button/1.0.0/dist/button.svg)](https://paypal.me/PengNick/)
 
-### Alipay 支付宝
-
-![alipay](https://raw.github.com/pymumu/smartdns/master/doc/alipay_donate.jpg)
-
-### Wechat 微信
-  
-![wechat](https://raw.github.com/pymumu/smartdns/master/doc/wechat_donate.jpg)
-
 ## 声明
 
-* `SmartDNS`著作权归属Nick Peng (pymumu at gmail.com)。
-* `SmartDNS`为免费软件，用户可以非商业性地复制和使用`SmartDNS`。
-* 禁止将 `SmartDNS` 用于商业用途。
-* 使用本软件的风险由用户自行承担，在适用法律允许的最大范围内，对因使用本产品所产生的损害及风险，包括但不限于直接或间接的个人损害、商业赢利的丧失、贸易中断、商业信息的丢失或任何其它经济损失，不承担任何责任。
-* 本软件不会未经用户同意收集任何用户信息。
-
-## 说明
-
-# 核心代码未开源，担心后门勿用
+- `SmartDNS`著作权归属Nick Peng (pymumu at gmail.com)。
+- `SmartDNS`为免费软件，用户可以非商业性地复制和使用`SmartDNS`。
+- 禁止将 `SmartDNS` 用于商业用途。
+- 使用本软件的风险由用户自行承担，在适用法律允许的最大范围内，对因使用本产品所产生的损害及风险，包括但不限于直接或间接的个人损害、商业赢利的丧失、贸易中断、商业信息的丢失或任何其它经济损失，不承担任何责任。
+- 本软件不会未经用户同意收集任何用户信息。

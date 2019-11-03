@@ -90,73 +90,65 @@ REPLACE="
 
 version=$(grep_prop version $TMPDIR/module.prop | awk -F " " '{print $1}')
 print_modname() {
-	ui_print "*******************************"
+	ui_print "****************"
 	ui_print " Smartdns"
 	ui_print " $version"
 	ui_print " By x4455"
-	ui_print "*******************************"
+	ui_print "****************"
 }
 
 on_install() {
   # The following is the default implementation: extract $ZIPFILE/system to $MODPATH
   # Extend/change the logic to whatever you want
 	ui_print "- Extracting module files"
-	unzip -o "$ZIPFILE" 'system/*' -d $MODPATH >&2
+	unzip -o "$ZIPFILE" 'system/*' 'core/*' -d $MODPATH >&2
 
 	[ $API -ge 28 ] && {
-	ui_print "***************"
-	ui_print '(!) Please close the Private DNS to prevent conflict'
-	ui_print "***************"
+	ui_print ""
+	ui_print '(!) Please close the Private DNS to prevent conflict.'
+	ui_print ""
 	}
 
-	unzip -o "$ZIPFILE" 'config/*' -d $TMPDIR >&2
-
-	install_smartdns
-}
-
-# Script by x4455 @ github
-install_smartdns() {
+	# Install script
 	case $ARCH in
 	arm|arm64|x86|x64)
 		BINARY_PATH=$TMPDIR/smartdns-$ARCH;;
 	*)
-		abort "(!) $ARCH are unsupported architecture"
+		abort "(!) $ARCH are unsupported architecture."
 	esac
 
 	source $TMPDIR/constant.sh
 
-	OLD_CONFIG=${CONFIG%/*}
-	NEW_CONFIG=$OLD_CONFIG
-	EXAMPLE_CONFIG=$TMPDIR/config
-
-	mkdir -p $MODPATH/system/xbin 2>/dev/null
-
 	if [ -f "$BINARY_PATH" ]; then
 		set_perm $BINARY_PATH 0 0 0755
-		ver=$($BINARY_PATH -v)
-		ui_print "- Core version: [$ver]"
+		ver=$($BINARY_PATH -v | awk -F " " '{print $2}')
+		ui_print "- Version: [$ver]"
 		sed -i -e "s/<VER>/${ver}/" $TMPDIR/module.prop
+
+		cp -af $BINARY_PATH $MODPATH/core/$CORE_BINARY
 	else
-		abort "(!) $ARCH Binary file missing"
+		abort "(!) $ARCH binary file missing."
 	fi
 
-	if [ $(ls $OLD_CONFIG | wc -l) -eq 0 ]; then
-		ui_print "- Create config path"
-		mkdir -p $NEW_CONFIG 2>/dev/null
-		ui_print "- Copy the example config file"
-		cp -rf $EXAMPLE_CONFIG/* $NEW_CONFIG
+	if [ $(ls $DATA_INTERNAL_DIR | wc -l) -eq 0 ]; then
+		unzip -o "$ZIPFILE" 'config/*' -d $TMPDIR >&2
+		mkdir -p $DATA_INTERNAL_DIR 2>/dev/null
+		cp -rf $TMPDIR/config/* $DATA_INTERNAL_DIR
+		ui_print ""
+		ui_print '(!!!) You need to configure upstream DNS servers.'
+		ui_print ""
+		sleep 15
 	fi
-# Set files
+
 	cp -af $TMPDIR/constant.sh $MODPATH/constant.sh
 	cp -af $TMPDIR/script.sh $MODPATH/system/xbin/smartdns
-	cp -af $BINARY_PATH $MODPATH/$CORE_BINARY
 }
 
 
 set_permissions() {
   # The following is the default rule, DO NOT remove
 	set_perm_recursive $MODPATH 0 0 0755 0644
-	set_perm $MODPATH/$CORE_BINARY 0 0 0755
+	set_perm_recursive $MODPATH/core 0 0 0755 0755
 	set_perm_recursive $MODPATH/system/xbin 0 0 0755 0755
 
   # Here are some examples:
