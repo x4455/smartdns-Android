@@ -1,9 +1,8 @@
 # SmartDNS
 
-![SmartDNS](https://raw.github.com/pymumu/smartdns/master/doc/smartdns-banner.png)  
+![SmartDNS](https://raw.github.com/pymumu/smartdns/master/doc/smartdns-banner.png)
 SmartDNS是一个运行在本地的DNS服务器，SmartDNS接受本地客户端的DNS查询请求，从多个上游DNS服务器获取DNS查询结果，并将访问速度最快的结果返回给客户端，避免DNS污染，提高网络访问速度。
-同时支持指定特定域名IP地址，并高性匹配，达到过滤广告的效果。  
-与dnsmasq的all-servers不同，smartdns返回的是访问速度最快的解析结果。
+同时支持指定特定域名IP地址，并高性匹配，达到过滤广告的效果。
 
 ## 核心代码未开源
 
@@ -11,13 +10,29 @@ SmartDNS是一个运行在本地的DNS服务器，SmartDNS接受本地客户端�
 
 ## 使用
 
-### 配置位于 /sdcard/smartdns/smartdns.conf
+- Android 9+ 请关闭设置中的私人DNS，以免产生不可预料的干扰。
 
-安装完成后，需要配置smartdns的上游服务器信息。具体配置参数参考`配置参数`说明。  
-一般情况下，只需要增加`server [IP]:port`, `server-tcp [IP]:port`配置项，
-尽可能配置多个上游DNS服务器，包括国内外的服务器。配置参数请查看`配置参数`章节。
+### 控制命令
 
-### 脚本配置位于 `/data/adb/modules/smartdns/constant.sh`
+`smartdns [command]`
+`-start` 启动服务
+`-stop` 停止服务
+`-status` 服务状态
+`-start-core` 仅启动核心
+`-iptrules-set` 初始化规则
+`-iptrules-reset` 清除所有规则并停止
+
+### 控制脚本配置
+位于 `/data/adb/modules/smartdns/constant.sh`
+
+- 该配置影响 iptables 规则及核心控制，一般情况下不需要修改。
+- SmartDNS 测速模式选择 ping 时，要把本配置中的 ServerUID 项设置为 `root`
+
+### Smartdns配置文件
+位于 /sdcard/smartdns/smartdns.conf
+
+- 安装完成后，需要配置 SmartDNS 的上游服务器信息。具体配置参数参考`配置参数`说明。
+- 一般情况下，只需要增加 `server [IP]:port`, `server-tcp [IP]:port` 配置项，尽可能配置多个上游DNS服务器，包括国内外的服务器。
 
 ## 配置参数
 
@@ -39,11 +54,12 @@ SmartDNS是一个运行在本地的DNS服务器，SmartDNS接受本地客户端�
 |audit-file|审计文件路径|/dev/smartdns_root/log/smartdns-audit.log|路径|audit-file /dev/smartdns_root/log/smartdns-audit.log
 |audit-size|审计大小|128K|数字+K,M,G|audit-size 128K
 |audit-num|审计归档个数|2|数字|audit-num 2
-|conf-file|附加配置文件|无|文件路径|conf-file /etc/smartdns/smartdns.more.conf
-|server|上游UDP DNS|无|可重复<br>`[ip][:port]`：服务器IP，端口可选。<br>`[-blacklist-ip]`：blacklist-ip参数指定使用blacklist-ip配置IP过滤结果。<br>`[-whitelist-ip]`：whitelist-ip参数指定仅接受whitelist-ip中配置IP范围。<br>`[-check-edns]`：edns过滤。<br>`[-group [group] ...]`：DNS服务器所属组，比如office, foreign，和nameserver配套使用。<br>`[-exclude-default-group]`：将DNS服务器从默认组中排除| server 8.8.8.8:53 -blacklist-ip -check-edns -group g1
+|conf-file|附加配置文件|无|文件路径|conf-file /data/media/0/smartdns/smartdns.more.conf
+|server|上游UDP DNS|无|可重复<br>`[ip][:port]`：服务器IP，端口可选。<br>`[-blacklist-ip]`：blacklist-ip参数指定使用blacklist-ip配置IP过滤结果。<br>`[-whitelist-ip]`：whitelist-ip参数指定仅接受whitelist-ip中配置IP范围。<br>`[-group [group] ...]`：DNS服务器所属组，比如office, foreign，和nameserver配套使用。<br>`[-exclude-default-group]`：将DNS服务器从默认组中排除| server 8.8.8.8:53 -blacklist-ip -group g1
 |server-tcp|上游TCP DNS|无|可重复<br>`[ip][:port]`：服务器IP，端口可选。<br>`[-blacklist-ip]`：blacklist-ip参数指定使用blacklist-ip配置IP过滤结果。<br>`[-whitelist-ip]`：whitelist-ip参数指定仅接受whitelist-ip中配置IP范围。<br>`[-group [group] ...]`：DNS服务器所属组，比如office, foreign，和nameserver配套使用。<br>`[-exclude-default-group]`：将DNS服务器从默认组中排除| server-tcp 8.8.8.8:53
-|server-tls|上游TLS DNS|无|可重复<br>`[ip][:port]`：服务器IP，端口可选。<br>`[-spki-pin [sha256-pin]]`: TLS合法性校验SPKI值，base64编码的sha256 SPKI pin值<br>`[-host-name]`：TLS SNI名称。<br>`[-blacklist-ip]`：blacklist-ip参数指定使用blacklist-ip配置IP过滤结果。<br>`[-whitelist-ip]`：whitelist-ip参数指定仅接受whitelist-ip中配置IP范围。<br>`[-group [group] ...]`：DNS服务器所属组，比如office, foreign，和nameserver配套使用。<br>`[-exclude-default-group]`：将DNS服务器从默认组中排除| server-tls 8.8.8.8:853
-|server-https|上游HTTPS DNS|无|可重复<br>`https://[host][:port]/path`：服务器IP，端口可选。<br>`[-spki-pin [sha256-pin]]`: TLS合法性校验SPKI值，base64编码的sha256 SPKI pin值<br>`[-host-name]`：TLS SNI名称<br>`[-http-host]`：http协议头主机名。<br>`[-blacklist-ip]`：blacklist-ip参数指定使用blacklist-ip配置IP过滤结果。<br>`[-whitelist-ip]`：whitelist-ip参数指定仅接受whitelist-ip中配置IP范围。<br>`[-group [group] ...]`：DNS服务器所属组，比如office, foreign，和nameserver配套使用。<br>`[-exclude-default-group]`：将DNS服务器从默认组中排除| server-https https://cloudflare-dns.com/dns-query
+|server-tls|上游TLS DNS|无|可重复<br>`[ip][:port]`：服务器IP，端口可选。<br>`[-spki-pin [sha256-pin]]`: TLS合法性校验SPKI值，base64编码的sha256 SPKI pin值<br>`[-host-name]`：TLS SNI名称。<br>`[-tls-host-verify]`: TLS证书主机名校验。<br>`[-blacklist-ip]`：blacklist-ip参数指定使用blacklist-ip配置IP过滤结果。<br>`[-whitelist-ip]`：whitelist-ip参数指定仅接受whitelist-ip中配置IP范围。<br>`[-group [group] ...]`：DNS服务器所属组，比如office, foreign，和nameserver配套使用。<br>`[-exclude-default-group]`：将DNS服务器从默认组中排除| server-tls 8.8.8.8:853
+|server-https|上游HTTPS DNS|无|可重复<br>`https://[host][:port]/path`：服务器IP，端口可选。<br>`[-spki-pin [sha256-pin]]`: TLS合法性校验SPKI值，base64编码的sha256 SPKI pin值<br>`[-host-name]`：TLS SNI名称<br>`[-http-host]`：http协议头主机名。<br>`[-tls-host-verify]`: TLS证书主机名校验。<br>`[-blacklist-ip]`：blacklist-ip参数指定使用blacklist-ip配置IP过滤结果。<br>`[-whitelist-ip]`：whitelist-ip参数指定仅接受whitelist-ip中配置IP范围。<br>`[-group [group] ...]`：DNS服务器所属组，比如office, foreign，和nameserver配套使用。<br>`[-exclude-default-group]`：将DNS服务器从默认组中排除| server-https https://cloudflare-dns.com/dns-query
+|speed-check-mode|测速模式选择|无|[ping\|tcp:[80]\|none]|speed-check-mode ping,tcp:80
 |address|指定域名IP地址|无|address /domain/[ip\|-\|-4\|-6\|#\|#4\|#6] <br>`-`表示忽略 <br>`#`表示返回SOA <br>`4`表示IPV4 <br>`6`表示IPV6| address /www.example.com/1.2.3.4
 |nameserver|指定域名使用server组解析|无|nameserver /domain/[group\|-], `group`为组名，`-`表示忽略此规则，配套server中的`-group`参数使用| nameserver /www.example.com/office
 |ipset|域名IPSET|None|ipset /domain/[ipset\|-], `-`表示忽略|ipset /www.example.com/pass
@@ -72,8 +88,10 @@ SmartDNS是一个运行在本地的DNS服务器，SmartDNS接受本地客户端�
 
 ## 声明
 
-- `SmartDNS`著作权归属Nick Peng (pymumu at gmail.com)。
-- `SmartDNS`为免费软件，用户可以非商业性地复制和使用`SmartDNS`。
+### 如果您下载且安装 SmartDNS，则表示认同声明协议
+
+- `SmartDNS` 著作权归属 Nick Peng (pymumu at gmail.com)。
+- `SmartDNS` 为免费软件，用户可以非商业性地复制和使用 `SmartDNS`。
 - 禁止将 `SmartDNS` 用于商业用途。
 - 使用本软件的风险由用户自行承担，在适用法律允许的最大范围内，对因使用本产品所产生的损害及风险，包括但不限于直接或间接的个人损害、商业赢利的丧失、贸易中断、商业信息的丢失或任何其它经济损失，不承担任何责任。
 - 本软件不会未经用户同意收集任何用户信息。

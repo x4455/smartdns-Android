@@ -14,14 +14,15 @@ do
   sleep 1
 done
 
-LOG_PATH="$MODDIR/boot.log"
-[ -f $LOG_PATH ] \
-  && rm $LOG_PATH
+LOG_PATH="$ROOT/boot.log"
+[ -f $LOG_PATH ] && rm $LOG_PATH
 exec 1>>$LOG_PATH 2>&1
 set -x
 
-/system/bin/sh $MODDIR/system/xbin/smartdns -set
+/system/bin/sh $MODDIR/system/xbin/smartdns -iptrules-set
 
 /system/bin/sh $MODDIR/system/xbin/smartdns -start
+sleep 5
+cat $ROOT/log/smartdns.log
 
 exit 0

@@ -114,7 +114,7 @@ on_install() {
 	arm|arm64|x86|x64)
 		BINARY_PATH=$TMPDIR/smartdns-$ARCH;;
 	*)
-		abort "(!) $ARCH are unsupported architecture."
+		abort "(E) $ARCH are unsupported architecture."
 	esac
 
 	source $TMPDIR/constant.sh
@@ -127,7 +127,7 @@ on_install() {
 
 		cp -af $BINARY_PATH $MODPATH/core/$CORE_BINARY
 	else
-		abort "(!) $ARCH binary file missing."
+		abort "(E) $ARCH binary file missing."
 	fi
 
 	if [ $(ls $DATA_INTERNAL_DIR | wc -l) -eq 0 ]; then
@@ -137,7 +137,7 @@ on_install() {
 		ui_print ""
 		ui_print '(!!!) You need to configure upstream DNS servers.'
 		ui_print ""
-		sleep 15
+		sleep 5
 	fi
 
 	cp -af $TMPDIR/constant.sh $MODPATH/constant.sh
@@ -149,6 +149,7 @@ set_permissions() {
   # The following is the default rule, DO NOT remove
 	set_perm_recursive $MODPATH 0 0 0755 0644
 	set_perm_recursive $MODPATH/core 0 0 0755 0755
+	set_perm_recursive $MODPATH/system/bin 0 0 0755 0755
 	set_perm_recursive $MODPATH/system/xbin 0 0 0755 0755
 
   # Here are some examples:

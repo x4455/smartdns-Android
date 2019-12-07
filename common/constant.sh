@@ -1,18 +1,23 @@
-# Listen port (Keep consistent with listen_addresses)
+### Make sure to stop the service before modifying the parameters
+
+# Listen port
 LPORT=6453
+
 
 ## Enhanced
 
-# Redirect protocol (eg. "udp tcp"
-protocol="udp"
+# Service permission [root/radio] (Some operations may want to use root)
+ServerUID='radio'
 
-# If you device are not supported "IPv6 nat", set this option to "true"
-# iptables block IPv6 port 53
+# Redirect protocol [udp|tcp]
+protocol="udp tcp"
+
+# iptables block IPv6 port 53 [true/false]
 ipt_block_v6=true
 
-## Constant ##(If you don't know what you are doing, don't modify it.)
-# Service permission (Some operations may want to use root)
-ServerUID='radio'
+
+
+## Constant  (If you don't know what you are doing, don't modify it.)
 
 # path
 IPT="/system/bin/iptables"
