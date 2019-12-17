@@ -1,6 +1,6 @@
 id=smartdns
 name=SmartDNS
-version=2.0.1 (<VER>)
-versionCode=191207
+version=2.2 (<VER>)
+versionCode=191217
 author=pymumu (module by x4455)
-description=在本地架设SmartDNS服务
+description=在本地架设 SmartDNS 服务

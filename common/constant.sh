@@ -1,20 +1,16 @@
-### Make sure to stop the service before modifying the parameters
+### Make sure to stop the server before modifying the parameters
 
-# Listen port
-LPORT=6453
+# Listening port set in the config
+Listen_PORT=6453
 
-
-## Enhanced
-
-# Service permission [root/radio] (Some operations may want to use root)
+# Server permission [radio/root] (Some operations may want to use root)
 ServerUID='radio'
 
-# Redirect protocol [udp|tcp]
-protocol="udp tcp"
-
 # iptables block IPv6 port 53 [true/false]
-ipt_block_v6=true
+ip6t_block=true
 
+# iptables anti-http 302 hijacking [true/false]
+ipt_anti302=false
 
 
 ## Constant  (If you don't know what you are doing, don't modify it.)

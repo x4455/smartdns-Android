@@ -91,9 +91,9 @@ REPLACE="
 version=$(grep_prop version $TMPDIR/module.prop | awk -F " " '{print $1}')
 print_modname() {
 	ui_print "****************"
-	ui_print " Smartdns"
+	ui_print " Smartdns - Android"
 	ui_print " $version"
-	ui_print " By x4455"
+	ui_print " module by x4455"
 	ui_print "****************"
 }
 
@@ -102,6 +102,8 @@ on_install() {
   # Extend/change the logic to whatever you want
 	ui_print "- Extracting module files"
 	unzip -o "$ZIPFILE" 'system/*' 'core/*' -d $MODPATH >&2
+
+	imageless_magisk || { abort '(!) Please update Magisk to 18.1+.'; }
 
 	[ $API -ge 28 ] && {
 	ui_print ""
