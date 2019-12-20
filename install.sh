@@ -119,7 +119,7 @@ on_install() {
 		abort "(E) $ARCH are unsupported architecture."
 	esac
 
-	source $TMPDIR/constant.sh
+	. $TMPDIR/lib.sh
 
 	if [ -f "$BINARY_PATH" ]; then
 		set_perm $BINARY_PATH 0 0 0755
@@ -137,12 +137,14 @@ on_install() {
 		mkdir -p $DATA_INTERNAL_DIR 2>/dev/null
 		cp -rf $TMPDIR/config/* $DATA_INTERNAL_DIR
 		ui_print ""
-		ui_print '(!!!) You need to configure upstream DNS servers.'
+		ui_print '(!!!) 需要您自行设置配置，默认仅提供基础联网功能。'
+		ui_print '(!!!) Requires you to set the configuration yourself,'
+		ui_print ' only basic networking features are provided by default.'
 		ui_print ""
 		sleep 5
 	fi
 
-	cp -af $TMPDIR/constant.sh $MODPATH/constant.sh
+	cp -af $TMPDIR/lib.sh $MODPATH/lib.sh
 	cp -af $TMPDIR/script.sh $MODPATH/system/xbin/smartdns
 }
 

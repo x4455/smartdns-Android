@@ -1,6 +1,6 @@
 #!/system/bin/sh
 MODDIR=${0%/*}
-source $MODDIR/constant.sh
+source $MODDIR/lib.sh
 
 mkdir -p "$ROOT/log"
 mkdir -p "$CORE_DIR"
@@ -11,7 +11,7 @@ mount -o bind "$DATA_INTERNAL_DIR" "$DATA_DIR"
 
 while [[ ! -d "/sdcard/Android" ]]
 do
-  sleep 1
+	sleep 1
 done
 
 LOG_PATH="$ROOT/log/boot.log"

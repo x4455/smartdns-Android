@@ -13,17 +13,28 @@ SmartDNS是一个运行在本地的DNS服务器。SmartDNS会从多个上游DNS�
 ## 使用
 
 - Android 9+ 请关闭设置中的私人DNS，以免产生不可预料的干扰。
+- 安装完成后，需要配置 SmartDNS 的上游服务器信息。具体配置参数参考`配置参数`说明。
 
 ### 脚本控制
 
-`smartdns [options]`
-`-start` 启动服务
-`-stop` 停止服务
-`-status` 服务状态
-`-usage` 帮助信息
-`-user [radio/root]` 服务器权级
-`-anti302 [true/false]` 尝试过滤http302劫持
-`-ip6block [true/false]` 封锁ipv6的53端口，否则转发ipv6查询
+- 使用终端模拟器，获取 su 后可执行以下命令
+格式 `smartdns [options]`
+```
+-start
+# 启动服务
+-stop
+# 停止服务
+-status
+# 服务状态
+-usage
+# 帮助信息
+-user [radio/root]
+# 服务器权级
+-anti302 [disable | lite | ultimate]
+# 尝试过滤http302劫持 (不可靠)
+-ip6block [true/false]
+# 封锁ipv6查询，否则进行重定向
+```
 
 ### 脚本配置
 
@@ -36,8 +47,7 @@ SmartDNS是一个运行在本地的DNS服务器。SmartDNS会从多个上游DNS�
 
 位于 /sdcard/smartdns/smartdns.conf
 
-- 安装完成后，需要配置 SmartDNS 的上游服务器信息。具体配置参数参考`配置参数`说明。
-- 一般同一个上游没必要配置不同协议，对于国内直接用udp，可增加ip黑名单，国外优先tls，https
+- 一般同一个上游没必要配置不同协议，对于国内直接用udp，可增加ip黑名单，国外优先tls，https。
 - 国内UDP查询速度快，没必要tcp，当然，移动的话，例外，用tcp合适。
 
 ## 配置参数

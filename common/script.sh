@@ -13,12 +13,12 @@ Valid options are:
         Server Status
     -usage
         Get help
-    -user [radio/root]
+    -user [radio / root]
         Server permission
-    -anti302 [true/false]
-        anti-http 302 hijacking
+    -anti302 [disable | lite | ultimate]
+        Anti-http 302 hijacking (insecure)
     -ip6block [true/false]
-        block IPv6 port 53
+        Block IPv6 port 53 output
 EOF
 	exit $1
 }
@@ -40,6 +40,7 @@ iptrules_off() {
 }
 
 ip6trules_switch() {
+	# ip6block [true/false]
 	if [ $ip6t_block ]; then
 		$IP6T -t filter $1 OUTPUT -p udp --dport 53 -j DROP
 		$IP6T -t filter $1 OUTPUT -p tcp --dport 53 -j REJECT --reject-with tcp-reset
@@ -50,15 +51,14 @@ ip6trules_switch() {
 
 # 加载
 iptrules_load() {
-	echo "info: $1 $2"
+	echo "info: ${1##\/*\/} $2"
 
 	# 新建规则
 	if [ "${2}" == '-I' ]; then
 		$1 -t nat -N DNS_LOCAL
-		$1 -t nat -A DNS_LOCAL -m owner --uid-owner $(id -u $ServerUID) -j RETURN
 	fi
 
-	for IPP in 'udp' 'tcp'
+	for IPP in 'tcp' 'udp'
 	do
 		# DNS_LOCAL
 		$1 -t nat $2 OUTPUT -p $IPP --dport 53 -j DNS_LOCAL
@@ -68,16 +68,30 @@ iptrules_load() {
 		$1 -t nat $2 PREROUTING -p $IPP --dport 53 -j REDIRECT --to-ports $Listen_PORT
 	done
 
-	# 清除规则
 	if [ "${2}" == '-D' ]; then
+		# 清除规则
 		$1 -t nat -F DNS_LOCAL
 		$1 -t nat -X DNS_LOCAL
+	else
+		$1 -t nat $2 DNS_LOCAL -m owner --uid-owner $(id -u $ServerUID) -j RETURN
 	fi
 
-	#anti http 303
-	if [ $ipt_anti302 ]; then
-		$1 -t filter $2 INPUT -p tcp -m tcp --sport 80 --tcp-flags SYN,RST,URG FIN,PSH,ACK -m ttl --ttl-gt 20 -m ttl --ttl-lt 30 -j DROP
+	# anti http 302 [ disable | lite | normal | ultimate ]
+	if [ "$ipt_anti302" != 'disable' ]; then
+		case "${ipt_anti302}" in
+			lite)
+				$1 $2 INPUT -p tcp -m tcp --sport 80 --tcp-flags SYN,RST,URG FIN,PSH,ACK -j DROP
+				;;
+			#normal) $1 $2 INPUT -p tcp -m tcp --sport 80 ;;
+			ultimate)
+				$1 $2 INPUT -p tcp -m tcp --sport 80 --tcp-flags FIN,SYN,RST,PSH,ACK,URG PSH,ACK -m string --algo bm --from 45 --to 80 --string "302 Found" -j DROP
+				;;
+			*)
+				echo "WARNING: Invalid value: $ipt_anti302"
+				;;
+		esac
 	fi
+	echo "info: Anti302 [ $ipt_anti302 ]"
 }
 
 ## 检查
@@ -121,41 +135,29 @@ server_check() {
 
 
 ## 其他
-# (重)启动核心
+# (重)启动服务器
 core_start() {
 	killall $CORE_BINARY 2>/dev/null
 	sleep 1
-	#setuidgid UID GID GROUPS
+	# setuidgid UID GID GROUPS
 	$CORE_DIR/setuidgid $(id -u $ServerUID) $(id -g $ServerUID) $(id -g $ServerUID),$(id -g inet),$(id -g media_rw) $CORE_BOOT 2>&1
 	sleep 3
 	if core_check; then
-		echo "info: Server start $(date +'%d/%r')"
+		echo "info: Server start [$(date +'%d/%r')]"
 		return 0
 	else
-		echo 'error: Server failed to start'
+		echo 'error: start server failed.'
 		exit 1
 	fi
 }
 
 ### main
-save_value() {
-	local tmp=$(grep "^$1=" $MODDIR/constant.sh)
-	value_change=true
-	if [ -z "${3}" ]; then
-		sed -i "s#^$tmp#$1=\"$2\"#g" $MODDIR/constant.sh
-	else
-		sed -i "s#^$tmp#$1=$2#g" $MODDIR/constant.sh
-	fi
-	return $?
-}
-
-
 get_args() {
 	Listen_PORT=6453
 	ServerUID='radio'
 	ip6t_block=true
-	ipt_anti302=false
-	source $MODDIR/constant.sh || exit 1
+	ipt_anti302='disable'
+	. $MODDIR/lib.sh || exit 1
 
 	while [ ${#} -gt 0 ]; do
 		case "${1}" in
@@ -178,37 +180,49 @@ get_args() {
 
 				# 修改数值
 			-user) # radio/root
-				if [ "${2}" != 'radio' -a "${2}" != 'root' ]; then
-					echo "warn: Invalid value: $2"
-					exit 1
-				fi
-				ServerUID=$2
-				save_value ServerUID $2
-				shift 1
+				case "${2}" in
+					radio|root)
+						ServerUID=$2
+						save_value ServerUID $2
+						shift 1
+						;;
+					*)
+						echo "Error: Invalid value: $2"
+						exit 1
+						;;
+				esac
 				;;
 
 			-anti302)
-				if [ "${2}" != 'true' -a "${2}" != 'false' ]; then
-					echo "warn: Invalid value: $2"
-					exit 1
-				fi
-				ipt_anti302=$2
-				save_value ipt_anti302 $2 bool
-				shift 1
+				case "${2}" in
+					disable|lite|normal|ultimate)
+						ipt_anti302=$2
+						save_value ipt_anti302 $2
+						shift 1
+						;;
+					*)
+						echo "Error: Invalid value: $2"
+						exit 1
+						;;
+				esac
 				;;
 
 			-ip6block)
-				if [ "${2}" != 'true' -a "${2}" != 'false' ]; then
-					echo "warn: Invalid value: $2"
-					exit 1
-				fi
-				ip6t_block=$2
-				save_value ip6t_block $2 bool
-				shift 1
+				case "${2}" in
+					true|false)
+						ip6t_block=$2
+						save_value ip6t_block $2 bool
+						shift 1
+						;;
+					*)
+						echo "Error: Invalid value: $2"
+						exit 1
+						;;
+				esac
 				;;
 
 			*)
-				echo "warn: Invalid argument: $1"
+				echo "Error: Invalid argument: $1"
 				usage 1
 				;;
 
@@ -223,7 +237,7 @@ process() {
 		Server='start'
 	fi
 
-	case "$Server" in
+	case "${Server}" in
 		start) # 启动
 			iptrules_off
 			core_start && iptrules_on
@@ -232,7 +246,7 @@ process() {
 		stop) # 停止
 			iptrules_off
 			killall $CORE_BINARY 2>/dev/null
-			echo "info: Server stop $(date +'%d/%r')"
+			echo "info: Server stop [$(date +'%d/%r')]"
 			;;
 	esac
 }
