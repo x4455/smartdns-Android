@@ -137,7 +137,7 @@ on_install() {
 		mkdir -p $DATA_INTERNAL_DIR 2>/dev/null
 		cp -rf $TMPDIR/config/* $DATA_INTERNAL_DIR
 		ui_print ""
-		ui_print '(!!!) 需要您自行设置配置，默认仅提供基础联网功能。'
+		ui_print '(!!!) 默认仅提供基础联网功能，需要您自行设置配置。'
 		ui_print '(!!!) Requires you to set the configuration yourself,'
 		ui_print ' only basic networking features are provided by default.'
 		ui_print ""

@@ -13,14 +13,14 @@ while [[ ! -d "/sdcard/Android" ]]
 do
 	sleep 1
 done
-
+sleep 10
 LOG_PATH="$ROOT/log/boot.log"
 [ -f $LOG_PATH ] && rm $LOG_PATH
 exec 1>>$LOG_PATH 2>&1
 set -x
 
 /system/bin/sh $MODDIR/system/xbin/smartdns -start
-sleep 5
+sleep 7
 cat $ROOT/log/smartdns.log
 
 exit 0

@@ -1,8 +1,10 @@
 #!/system/bin/sh
 ### Make sure to stop the server before modifying the parameters
 
-# Listening port set in the config
+# Main listen port
 Listen_PORT=6453
+# Route listen port
+Route_PORT=
 
 # Server permission [radio/root] (Some operations may want to use root)
 ServerUID='radio'
@@ -16,7 +18,7 @@ ipt_anti302='disable'
 
 
 ####################
-### Don't modify it. ###
+### Don't modify it.
 ####################
 # PATHs
 #########
@@ -47,4 +49,21 @@ save_value() {
 		sed -i "s#^$tmp#$1=$2#g" $MODDIR/lib.sh
 	fi
 	return $?
+}
+
+service_check() {
+	local i=0
+	core_check || i=`expr $i + 2`
+	iptrules_check || ((++i))
+
+	case ${i} in
+		3)  # Not working
+			return 3 ;;
+		2)  # Server not working
+			return 2 ;;
+		1)  # iptrules not load
+			return 1 ;;
+		0)  # Working
+			return 0 ;;
+	esac
 }

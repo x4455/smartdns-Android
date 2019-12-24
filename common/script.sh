@@ -63,9 +63,9 @@ iptrules_load() {
 		# DNS_LOCAL
 		$1 -t nat $2 OUTPUT -p $IPP --dport 53 -j DNS_LOCAL
 		$1 -t nat $2 DNS_LOCAL -p $IPP -j REDIRECT --to-ports $Listen_PORT
-		$1 -t nat $2 POSTROUTING -p $IPP -d 127.0.0.1 --dport $Listen_PORT -j SNAT --to-source 127.0.0.1
+		$1 -t nat $2 POSTROUTING -p $IPP -d 127.0.0.1/32 --dport $Listen_PORT -j SNAT --to-source 127.0.0.1
 		# DNS_EXTERNAL
-		$1 -t nat $2 PREROUTING -p $IPP --dport 53 -j REDIRECT --to-ports $Listen_PORT
+		$1 -t nat $2 PREROUTING -p $IPP --dport 53 -j REDIRECT --to-ports $Route_PORT
 	done
 
 	if [ "${2}" == '-D' ]; then
@@ -82,7 +82,7 @@ iptrules_load() {
 			lite)
 				$1 $2 INPUT -p tcp -m tcp --sport 80 --tcp-flags SYN,RST,URG FIN,PSH,ACK -j DROP
 				;;
-			#normal) $1 $2 INPUT -p tcp -m tcp --sport 80 ;;
+			#normal) $1 $2 INPUT -p tcp -m tcp --sport 80 -j DROP ;;
 			ultimate)
 				$1 $2 INPUT -p tcp -m tcp --sport 80 --tcp-flags FIN,SYN,RST,PSH,ACK,URG PSH,ACK -m string --algo bm --from 45 --to 80 --string "302 Found" -j DROP
 				;;
@@ -115,25 +115,6 @@ core_check()
 	fi
 }
 
-server_check() {
-	local i=0
-	core_check || i=`expr $i + 2`
-	iptrules_check || ((++i))
-
-	case ${i} in
-		3)  # 未工作
-			return 1 ;;
-		2)  # 核心
-			return 11 ;;
-		1)  # 防火墙
-			return 10 ;;
-		0)  # 工作中
-			return 0 ;;
-	esac
-}
-
-
-
 ## 其他
 # (重)启动服务器
 core_start() {
@@ -153,11 +134,13 @@ core_start() {
 
 ### main
 get_args() {
-	Listen_PORT=6453
+	Listen_PORT='6453'
+	Route_PORT=''
 	ServerUID='radio'
 	ip6t_block=true
 	ipt_anti302='disable'
 	. $MODDIR/lib.sh || exit 1
+	[ -z "$Route_PORT" ] && Route_PORT=$Listen_PORT
 
 	while [ ${#} -gt 0 ]; do
 		case "${1}" in
@@ -174,23 +157,60 @@ get_args() {
 				;;
 
 			-status) # 检查状态
-				server_check
+				service_check
 				exit $?
 				;;
 
 				# 修改数值
-			-user) # radio/root
+
+			-port) # 端口设定
+				local i='(^[1-9][0-9]{0,3}$)|(^[1-5][0-9]{4}$)|(^6[0-5][0-5][0-3][0-5]$)'
+				case "${2}" in
+					main)
+						if [ -n "$(echo $3 | grep -E $i)" ]; then
+							Listen_PORT=$3
+							save_value Listen_PORT $Listen_PORT
+							shift 2
+						else
+							echo "Error: Invalid value: $3"
+							exit 1
+						fi
+							;;
+					route)
+						if [ -n "$(echo $3 | grep -E $i)" ]; then
+							Route_PORT=$3
+							save_value Route_PORT $Route_PORT
+							shift 2
+						else
+							echo "Error: Invalid value: $3"
+							exit 1
+						fi
+						;;
+					*)
+						if [ -n "$(echo $2 | grep -E $i)" ]; then
+							Listen_PORT=$2
+							save_value Listen_PORT $Listen_PORT
+							shift 1
+						else
+							echo "Error: Invalid value: $2"
+							exit 1
+						fi
+						;;
+				esac
+				;;
+
+			-user) # 服务器权级
 				case "${2}" in
 					radio|root)
 						ServerUID=$2
 						save_value ServerUID $2
-						shift 1
 						;;
 					*)
 						echo "Error: Invalid value: $2"
 						exit 1
 						;;
 				esac
+				shift 1
 				;;
 
 			-anti302)
@@ -198,13 +218,13 @@ get_args() {
 					disable|lite|normal|ultimate)
 						ipt_anti302=$2
 						save_value ipt_anti302 $2
-						shift 1
 						;;
 					*)
 						echo "Error: Invalid value: $2"
 						exit 1
 						;;
 				esac
+				shift 1
 				;;
 
 			-ip6block)
@@ -212,13 +232,13 @@ get_args() {
 					true|false)
 						ip6t_block=$2
 						save_value ip6t_block $2 bool
-						shift 1
 						;;
 					*)
 						echo "Error: Invalid value: $2"
 						exit 1
 						;;
 				esac
+				shift 1
 				;;
 
 			*)
@@ -232,7 +252,7 @@ get_args() {
 }
 
 process() {
-	if [ $value_change -a server_check ]; then
+	if [ $value_change -a service_check ]; then
 		echo -e 'info: value change !\ninfo: restart server !'
 		Server='start'
 	fi
