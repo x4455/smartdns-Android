@@ -11,12 +11,12 @@ Valid options are:
         Stop Server
     -status
         Server Status
+    --clean
+        Clear all rules and stop
     -usage
         Get help
     -user [radio / root]
         Server permission
-    -anti302 [disable | lite | ultimate]
-        Anti-http 302 hijacking (insecure)
     -ip6block [true/false]
         Block IPv6 port 53 output
 EOF
@@ -73,25 +73,9 @@ iptrules_load() {
 		$1 -t nat -F DNS_LOCAL
 		$1 -t nat -X DNS_LOCAL
 	else
+		# 放行查询
 		$1 -t nat $2 DNS_LOCAL -m owner --uid-owner $(id -u $ServerUID) -j RETURN
 	fi
-
-	# anti http 302 [ disable | lite | normal | ultimate ]
-	if [ "$ipt_anti302" != 'disable' ]; then
-		case "${ipt_anti302}" in
-			lite)
-				$1 $2 INPUT -p tcp -m tcp --sport 80 --tcp-flags SYN,RST,URG FIN,PSH,ACK -j DROP
-				;;
-			#normal) $1 $2 INPUT -p tcp -m tcp --sport 80 -j DROP ;;
-			ultimate)
-				$1 $2 INPUT -p tcp -m tcp --sport 80 --tcp-flags FIN,SYN,RST,PSH,ACK,URG PSH,ACK -m string --algo bm --from 45 --to 80 --string "302 Found" -j DROP
-				;;
-			*)
-				echo "WARNING: Invalid value: $ipt_anti302"
-				;;
-		esac
-	fi
-	echo "info: Anti302 [ $ipt_anti302 ]"
 }
 
 ## 检查
@@ -105,8 +89,8 @@ iptrules_check()
 	fi
 }
 
-# 核心进程
-core_check()
+# 服务器进程
+service_check()
 {
 	if [ -n "`pgrep $CORE_BINARY`" ]; then
 		echo 'info: Server √'; return 0
@@ -118,12 +102,12 @@ core_check()
 ## 其他
 # (重)启动服务器
 core_start() {
-	killall $CORE_BINARY 2>/dev/null
+	killall -9 $CORE_BINARY >/dev/null 2>&1
 	sleep 1
 	# setuidgid UID GID GROUPS
 	$CORE_DIR/setuidgid $(id -u $ServerUID) $(id -g $ServerUID) $(id -g $ServerUID),$(id -g inet),$(id -g media_rw) $CORE_BOOT 2>&1
 	sleep 3
-	if core_check; then
+	if [ service_check ]; then
 		echo "info: Server start [$(date +'%d/%r')]"
 		return 0
 	else
@@ -132,16 +116,8 @@ core_start() {
 	fi
 }
 
-### main
+### Main
 get_args() {
-	Listen_PORT='6453'
-	Route_PORT=''
-	ServerUID='radio'
-	ip6t_block=true
-	ipt_anti302='disable'
-	. $MODDIR/lib.sh || exit 1
-	[ -z "$Route_PORT" ] && Route_PORT=$Listen_PORT
-
 	while [ ${#} -gt 0 ]; do
 		case "${1}" in
 			-usage) # 帮助信息
@@ -156,9 +132,12 @@ get_args() {
 				Server='stop'
 				;;
 
+			--clean) # 清除
+				Server='clean'
+				;;
+
 			-status) # 检查状态
-				service_check
-				exit $?
+				Server='status'
 				;;
 
 				# 修改数值
@@ -213,21 +192,7 @@ get_args() {
 				shift 1
 				;;
 
-			-anti302)
-				case "${2}" in
-					disable|lite|normal|ultimate)
-						ipt_anti302=$2
-						save_value ipt_anti302 $2
-						;;
-					*)
-						echo "Error: Invalid value: $2"
-						exit 1
-						;;
-				esac
-				shift 1
-				;;
-
-			-ip6block)
+			-ip6block) # ipv6
 				case "${2}" in
 					true|false)
 						ip6t_block=$2
@@ -252,7 +217,7 @@ get_args() {
 }
 
 process() {
-	if [ $value_change -a service_check ]; then
+	if [ $value_change -a server_check ]; then
 		echo -e 'info: value change !\ninfo: restart server !'
 		Server='start'
 	fi
@@ -265,18 +230,48 @@ process() {
 
 		stop) # 停止
 			iptrules_off
-			killall $CORE_BINARY 2>/dev/null
+			killall -9 $CORE_BINARY >/dev/null 2>&1
 			echo "info: Server stop [$(date +'%d/%r')]"
+			;;
+
+		status) # 检查状态
+			server_check
+			exit $?
+			;;
+
+		clean) # 清除所有防火墙规则
+			local i
+			for i in "$IPT" "$IP6T"
+			do
+				$i -t nat -F OUTPUT
+				$i -t nat -F DNS_LOCAL
+				$i -t nat -X DNS_LOCAL
+				$i -t nat -F POSTROUTING
+				$i -t nat -F PREROUTING
+			done
+			killall -9 $CORE_BINARY >/dev/null 2>&1
 			;;
 	esac
 }
 
 main() {
-	if [ -z "${1}" ]; then
-		usage 0
+	Listen_PORT='6453'
+	Route_PORT=''
+	ServerUID='radio'
+	ip6t_block=true
+	. $MODDIR/lib.sh || exit 1
+	[ -z "$Route_PORT" ] && Route_PORT=$Listen_PORT
+
+	if [ "${1}" == '--b' ]||[ "${1}" == '-binary' ]; then
+		shift 1
+		$CORE_DIR/$CORE_BINARY $*
 	else
-		get_args "$@"
-		process
+		if [ -z "${1}" ]; then
+			usage 0
+		else
+			get_args "$@"
+			process
+		fi
 	fi
 }
 

@@ -15,40 +15,48 @@ SmartDNS是一个运行在本地的DNS服务器。SmartDNS会从多个上游DNS�
 - Android 9+ 请关闭设置中的私人DNS，以免产生不可预料的干扰。
 - 安装完成后，需要进行配置，默认仅提供基础联网功能。具体配置参数参考`配置参数`说明。
 
-### 脚本控制
+## 脚本控制
 
-- 使用终端模拟器，获取 su 后可执行以下命令 `smartdns [options]`
+- 使用终端模拟器，获取 su 后执行以下命令 `smartdns [options]`
 
 ```sh
--start
-# 启动服务
--stop
+~ -start
+# (重)启动服务
+
+~ -stop
 # 停止服务
--status
+
+~ -status
 # 服务状态
--usage
+
+~ --clean
+# 清除所有规则并停止
+
+~ -usage
 # 帮助信息
--user [radio/root]
+
+~ -user [radio/root]
 # 服务器权级
--anti302 [disable | lite | ultimate]
-# 尝试过滤http302劫持 (不可靠)
--ip6block [true/false]
+
+~ -ip6block [true/false]
 # 封锁ipv6查询，否则进行重定向
 ```
 
-### 脚本配置
+## 脚本配置
 
 位于 /data/adb/modules/smartdns/constant.sh
 
 - 该配置影响 iptables 规则及服务控制，一般情况下不需要修改。
 - SmartDNS 测速模式选择 ping 时，需要使用一次命令 `-user root`
 
-### Smartdns配置文件
+## Smartdns配置文件
 
-位于 /sdcard/smartdns/smartdns.conf
+位于 /sdcard/Android/smartdns/smartdns.conf
 
-- 一般同一个上游没必要配置不同协议，对于国内直接用udp，可增加ip黑名单，国外优先tls，https。
-- 国内UDP查询速度快，没必要tcp，当然，移动的话，例外，用tcp合适。
+### 一些建议
+
+- 一般同一个上游没必要配置不同协议。
+- 对国内直接用udp（移动的话，用tcp合适），可增加ip黑名单。对国外优先用tls，https。
 
 ## 配置参数
 

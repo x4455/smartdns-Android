@@ -12,9 +12,6 @@ ServerUID='radio'
 # iptables block IPv6 port 53 [true/false]
 ip6t_block=true
 
-# iptables anti-http 302 hijacking (insecure) [disable | lite | ultimate]
-ipt_anti302='disable'
-
 
 
 ####################
@@ -28,7 +25,7 @@ IP6T=/system/bin/ip6tables
 ROOT=/dev/smartdns_root
 
 CORE_INTERNAL_DIR="$MODDIR/core"
-DATA_INTERNAL_DIR="/data/media/0/smartdns"
+DATA_INTERNAL_DIR="/data/media/0/Android/smartdns"
 
 CORE_DIR="$ROOT/core"
 DATA_DIR="$ROOT/config"
@@ -51,9 +48,9 @@ save_value() {
 	return $?
 }
 
-service_check() {
+server_check() {
 	local i=0
-	core_check || i=`expr $i + 2`
+	service_check || i=`expr $i + 2`
 	iptrules_check || ((++i))
 
 	case ${i} in

@@ -14,6 +14,7 @@ do
 	sleep 1
 done
 sleep 10
+
 LOG_PATH="$ROOT/log/boot.log"
 [ -f $LOG_PATH ] && rm $LOG_PATH
 exec 1>>$LOG_PATH 2>&1

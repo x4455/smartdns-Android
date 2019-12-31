@@ -133,14 +133,14 @@ on_install() {
 	fi
 
 	if [ $(ls $DATA_INTERNAL_DIR | wc -l) -eq 0 ]; then
-		unzip -o "$ZIPFILE" 'config/*' -d $TMPDIR >&2
-		mkdir -p $DATA_INTERNAL_DIR 2>/dev/null
-		cp -rf $TMPDIR/config/* $DATA_INTERNAL_DIR
 		ui_print ""
 		ui_print '(!!!) 默认仅提供基础联网功能，需要您自行设置配置。'
 		ui_print '(!!!) Requires you to set the configuration yourself,'
 		ui_print ' only basic networking features are provided by default.'
 		ui_print ""
+		unzip -o "$ZIPFILE" 'config/*' -d $TMPDIR >&2
+		mkdir -p $DATA_INTERNAL_DIR 2>/dev/null
+		cp -rf $TMPDIR/config/* $DATA_INTERNAL_DIR
 		sleep 5
 	fi
 
@@ -153,8 +153,7 @@ set_permissions() {
   # The following is the default rule, DO NOT remove
 	set_perm_recursive $MODPATH 0 0 0755 0644
 	set_perm_recursive $MODPATH/core 0 0 0755 0755
-	set_perm_recursive $MODPATH/system/bin 0 0 0755 0755
-	set_perm_recursive $MODPATH/system/xbin 0 0 0755 0755
+	set_perm_recursive $MODPATH/system 0 0 0755 0755
 
   # Here are some examples:
   # set_perm_recursive  $MODPATH/system/lib       0     0       0755      0644
