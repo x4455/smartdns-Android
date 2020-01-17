@@ -2,16 +2,18 @@
 ### Make sure to stop the server before modifying the parameters
 
 # Main listen port
-Listen_PORT=6453
+Listen_PORT='6453'
 # Route listen port
-Route_PORT=
+Route_PORT=''
 
 # Server permission [radio/root] (Some operations may want to use root)
 ServerUID='radio'
 
 # iptables block IPv6 port 53 [true/false]
-ip6t_block=true
+IP6T_block=true
 
+# Limit queries from non-LAN
+Strict=true
 
 
 ####################
@@ -19,16 +21,17 @@ ip6t_block=true
 ####################
 # PATHs
 #########
-IPT=/system/bin/iptables
-IP6T=/system/bin/ip6tables
+IPT="/system/bin/iptables"
+IP6T="/system/bin/ip6tables"
 
-ROOT=/dev/smartdns_root
+ROOT="/dev/smartdns_root"
 
-CORE_INTERNAL_DIR="$MODDIR/core"
+CORE_INTERNAL_DIR="$MODDIR/binary"
 DATA_INTERNAL_DIR="/data/media/0/Android/smartdns"
 
-CORE_DIR="$ROOT/core"
+CORE_DIR="$ROOT/binary"
 DATA_DIR="$ROOT/config"
+LOCAL_DIR="/data/local/tmp/smartdns"
 
 CORE_BINARY="smartdns-server"
 CORE_BOOT="$CORE_DIR/$CORE_BINARY -c $DATA_DIR/smartdns.conf -p $ROOT/core.pid"

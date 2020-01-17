@@ -6,19 +6,23 @@ usage() {
 	cat <<-EOF
 Valid options are:
     -start
-        Start Server
+        Start Service
     -stop
-        Stop Server
+        Stop Service
     -status
-        Server Status
+        Service Status
     --clean
-        Clear all rules and stop
-    -usage
+        Clear all rules and stop server
+    -h, --help
         Get help
-    -user [radio / root]
+    -p, --port [main / route] {port}
+        Change port
+    -u, --user [radio / root]
         Server permission
-    -ip6block [true/false]
-        Block IPv6 port 53 output
+    --ip6block [true/false]
+        Block IPv6 port 53 output or Redirect query
+    --strict [true/false]
+        Limit queries from non-LAN
 EOF
 	exit $1
 }
@@ -35,15 +39,14 @@ iptrules_off() {
 	while iptrules_check; do
 		iptrules_load $IPT -D
 		ip6trules_switch -D
-		[[ ${i} > 2 ]] && { echo 'error: iptrules check error'; exit 1; } || ((++i))
+		[[ ${i} > 2 ]] && { echo 'Error: iptrules check Error'; exit 1; } || ((++i))
 	done
 }
 
 ip6trules_switch() {
-	# ip6block [true/false]
-	if [ $ip6t_block ]; then
-		$IP6T -t filter $1 OUTPUT -p udp --dport 53 -j DROP
-		$IP6T -t filter $1 OUTPUT -p tcp --dport 53 -j REJECT --reject-with tcp-reset
+	if [ $IP6T_block ]; then
+		$IP6T -t filter $1 OUTPUT -p tcp --dport 53 -m owner ! --uid-owner $(id -u $ServerUID) -j REJECT --reject-with tcp-reset
+		$IP6T -t filter $1 OUTPUT -p udp --dport 53 -m owner ! --uid-owner $(id -u $ServerUID) -j DROP
 	else
 		iptrules_load $IP6T $1
 	fi
@@ -51,38 +54,30 @@ ip6trules_switch() {
 
 # 加载
 iptrules_load() {
+	# $2  -I / -D
 	echo "info: ${1##\/*\/} $2"
-
-	# 新建规则
-	if [ "${2}" == '-I' ]; then
-		$1 -t nat -N DNS_LOCAL
-	fi
 
 	for IPP in 'tcp' 'udp'
 	do
 		# DNS_LOCAL
-		$1 -t nat $2 OUTPUT -p $IPP --dport 53 -j DNS_LOCAL
-		$1 -t nat $2 DNS_LOCAL -p $IPP -j REDIRECT --to-ports $Listen_PORT
-		$1 -t nat $2 POSTROUTING -p $IPP -d 127.0.0.1/32 --dport $Listen_PORT -j SNAT --to-source 127.0.0.1
-		# DNS_EXTERNAL
-		$1 -t nat $2 PREROUTING -p $IPP --dport 53 -j REDIRECT --to-ports $Route_PORT
-	done
+		$1 -t nat $2 OUTPUT -p $IPP --dport 53 -m owner ! --uid-owner $(id -u $ServerUID) -j REDIRECT --to-ports $Listen_PORT
+		$1 -t nat $2 POSTROUTING -p $IPP -d 127.0.0.0/8 --dport $Listen_PORT -j SNAT --to-source 127.0.0.1
 
-	if [ "${2}" == '-D' ]; then
-		# 清除规则
-		$1 -t nat -F DNS_LOCAL
-		$1 -t nat -X DNS_LOCAL
-	else
-		# 放行查询
-		$1 -t nat $2 DNS_LOCAL -m owner --uid-owner $(id -u $ServerUID) -j RETURN
-	fi
+		if [ $Strict ]; then
+		# DNS_EXTERNAL
+			$1 -t nat $2 PREROUTING -p $IPP -s 10.0.0.0/8 --dport 53 -j REDIRECT --to-ports $Route_PORT
+			$1 -t nat $2 PREROUTING -p $IPP -s 192.168.0.0/16 --dport 53 -j REDIRECT --to-ports $Route_PORT
+		else
+			$1 -t nat $2 PREROUTING -p $IPP --dport 53 -j REDIRECT --to-ports $Route_PORT
+		fi
+	done
 }
 
 ## 检查
 # 防火墙
 iptrules_check()
 {
-	if [ -n "`$IPT -t nat -S OUTPUT | grep 'DNS_LOCAL'`" ]; then
+	if [ -n "`$IPT -t nat -S OUTPUT | grep -E "dport 53.+REDIRECT.+${Listen_PORT}"`" ]; then
 		echo 'info: iprules √'; return 0
 	else
 		echo 'info: iprules ×'; return 1
@@ -111,7 +106,7 @@ core_start() {
 		echo "info: Server start [$(date +'%d/%r')]"
 		return 0
 	else
-		echo 'error: start server failed.'
+		echo 'Error: start server failed.'
 		exit 1
 	fi
 }
@@ -120,32 +115,32 @@ core_start() {
 get_args() {
 	while [ ${#} -gt 0 ]; do
 		case "${1}" in
-			-usage) # 帮助信息
+			-h|--help) # 帮助信息
 				usage 0
 				;;
 
 			-start) # 启动
-				Server='start'
+				Service='start'
 				;;
 
 			-stop) # 停止
-				Server='stop'
-				;;
-
-			--clean) # 清除
-				Server='clean'
+				Service='stop'
 				;;
 
 			-status) # 检查状态
-				Server='status'
+				Service='status'
+				;;
+
+			--clean) # 清除
+				Service='clean'
 				;;
 
 				# 修改数值
 
-			-port) # 端口设定
-				local i='(^[1-9][0-9]{0,3}$)|(^[1-5][0-9]{4}$)|(^6[0-5][0-5][0-3][0-5]$)'
+			-p|--port) # 端口设定
+				local i='(^[1-9][0-9]{0,3}$)|(^[1-5][0-9]{4}$)|(^6[0-5]{2}[0-3][0-5]$)'
 				case "${2}" in
-					main)
+					m|main)
 						if [ -n "$(echo $3 | grep -E $i)" ]; then
 							Listen_PORT=$3
 							save_value Listen_PORT $Listen_PORT
@@ -155,7 +150,7 @@ get_args() {
 							exit 1
 						fi
 							;;
-					route)
+					r|route)
 						if [ -n "$(echo $3 | grep -E $i)" ]; then
 							Route_PORT=$3
 							save_value Route_PORT $Route_PORT
@@ -178,7 +173,7 @@ get_args() {
 				esac
 				;;
 
-			-user) # 服务器权级
+			-u|--user) # 服务器权级
 				case "${2}" in
 					radio|root)
 						ServerUID=$2
@@ -192,11 +187,25 @@ get_args() {
 				shift 1
 				;;
 
-			-ip6block) # ipv6
+			--ip6block) # IPv6
 				case "${2}" in
 					true|false)
-						ip6t_block=$2
-						save_value ip6t_block $2 bool
+						IP6T_block=$2
+						save_value IP6T_block $2 bool
+						;;
+					*)
+						echo "Error: Invalid value: $2"
+						exit 1
+						;;
+				esac
+				shift 1
+				;;
+
+			--strict) # 限制
+				case "${2}" in
+					true|false)
+						Strict=$2
+						save_value Strict $2 bool
 						;;
 					*)
 						echo "Error: Invalid value: $2"
@@ -217,12 +226,12 @@ get_args() {
 }
 
 process() {
-	if [ $value_change -a server_check ]; then
+	if [[ $value_change && "$Service" != 'stop' && server_check ]]; then
 		echo -e 'info: value change !\ninfo: restart server !'
-		Server='start'
+		Service='start'
 	fi
 
-	case "${Server}" in
+	case "${Service}" in
 		start) # 启动
 			iptrules_off
 			core_start && iptrules_on
@@ -244,8 +253,6 @@ process() {
 			for i in "$IPT" "$IP6T"
 			do
 				$i -t nat -F OUTPUT
-				$i -t nat -F DNS_LOCAL
-				$i -t nat -X DNS_LOCAL
 				$i -t nat -F POSTROUTING
 				$i -t nat -F PREROUTING
 			done
@@ -258,13 +265,17 @@ main() {
 	Listen_PORT='6453'
 	Route_PORT=''
 	ServerUID='radio'
-	ip6t_block=true
-	. $MODDIR/lib.sh || exit 1
+	IP6T_block=true
+	Strict=true
+	. $MODDIR/lib.sh || { echo "Error: Can't load lib!"; exit 1; }
 	[ -z "$Route_PORT" ] && Route_PORT=$Listen_PORT
 
-	if [ "${1}" == '--b' ]||[ "${1}" == '-binary' ]; then
+	if [ "${1}" == '--b' ]; then
 		shift 1
 		$CORE_DIR/$CORE_BINARY $*
+	elif [ "${1}" == '-binary' ]; then
+		shift 1
+		$CORE_DIR/$CORE_BINARY -c $DATA_DIR/smartdns.conf $*
 	else
 		if [ -z "${1}" ]; then
 			usage 0

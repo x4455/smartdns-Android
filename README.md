@@ -8,7 +8,7 @@ SmartDNS是一个运行在本地的DNS服务器。SmartDNS会从多个上游DNS�
 ## 需求
 
 - arm, arm64, x86, x64 指令集
-- Magisk 18.1+
+- Magisk v19.0+
 
 ## 使用
 
@@ -17,7 +17,7 @@ SmartDNS是一个运行在本地的DNS服务器。SmartDNS会从多个上游DNS�
 
 ## 脚本控制
 
-- 使用终端模拟器，获取 su 后执行以下命令 `smartdns [options]`
+- 使用终端模拟器，获取 su 后执行以下常用命令 `smartdns [options]`
 
 ```sh
 ~ -start
@@ -32,13 +32,10 @@ SmartDNS是一个运行在本地的DNS服务器。SmartDNS会从多个上游DNS�
 ~ --clean
 # 清除所有规则并停止
 
-~ -usage
+~ -h, --help
 # 帮助信息
 
-~ -user [radio/root]
-# 服务器权级
-
-~ -ip6block [true/false]
+~ --ip6block [true/false]
 # 封锁ipv6查询，否则进行重定向
 ```
 
@@ -47,7 +44,7 @@ SmartDNS是一个运行在本地的DNS服务器。SmartDNS会从多个上游DNS�
 位于 /data/adb/modules/smartdns/constant.sh
 
 - 该配置影响 iptables 规则及服务控制，一般情况下不需要修改。
-- SmartDNS 测速模式选择 ping 时，需要使用一次命令 `-user root`
+- SmartDNS 测速模式选择 ping 时，需要使用一次命令 `smartdns -user root`
 
 ## Smartdns配置文件
 
@@ -71,11 +68,11 @@ SmartDNS是一个运行在本地的DNS服务器。SmartDNS会从多个上游DNS�
 |rr-ttl-min|允许的最小TTL值|远程查询结果|大于0的数字|rr-ttl-min 60
 |rr-ttl-max|允许的最大TTL值|远程查询结果|大于0的数字|rr-ttl-max 600
 |log-level|设置日志级别|error|fatal,error,warn,notice,info,debug|log-level error
-|log-file|日志文件路径|/dev/smartdns_root/log/smartdns.log|路径|log-file /dev/smartdns_root/log/smartdns.log
+|log-file|日志文件路径|/dev/smartdns_root/log/dns.log|路径|log-file /dev/smartdns_root/log/dns.log
 |log-size|日志大小|128K|数字+K,M,G|log-size 128K
 |log-num|日志归档个数|2|数字|log-num 2
 |audit-enable|设置审计启用|no|[yes\|no]|audit-enable yes
-|audit-file|审计文件路径|/dev/smartdns_root/log/smartdns-audit.log|路径|audit-file /dev/smartdns_root/log/smartdns-audit.log
+|audit-file|审计文件路径|/dev/smartdns_root/log/audit.log|路径|audit-file /dev/smartdns_root/log/audit.log
 |audit-size|审计大小|128K|数字+K,M,G|audit-size 128K
 |audit-num|审计归档个数|2|数字|audit-num 2
 |conf-file|附加配置文件|无|文件路径|conf-file /data/media/0/smartdns/smartdns.more.conf
@@ -100,8 +97,9 @@ SmartDNS是一个运行在本地的DNS服务器。SmartDNS会从多个上游DNS�
 ## 感谢
 
 - [SmartDNS](https://github.com/pymumu/smartdns) | pymumu
-- [ClashForMagisk](https://github.com/Kr328/ClashForMagisk) | Kr328
-- [smartdns-wsl](https://github.com/peaceshi/smartdns-wsl) | peaceshi
+- [ClashForMagisk](https://github.com/Kr328/ClashForMagisk) | Kr328  ~~~~
+- [smartdns-wsl](https://github.com/peaceshi/smartdns-wsl) | peaceshi  ~~~~
+- [config_update](https://github.com/Aefer/smartdns-Android/blob/master/configupdate.sh) | Aefer  ~~~~
 
 ## 捐赠
 
