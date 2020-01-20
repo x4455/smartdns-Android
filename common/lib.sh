@@ -41,8 +41,8 @@ CORE_BOOT="$CORE_DIR/$CORE_BINARY -c $DATA_DIR/smartdns.conf -p $ROOT/core.pid"
 ################
 
 save_value() {
+	[ server_check != '3' ] && { iptrules_off; killall -9 $CORE_BINARY >/dev/null 2>&1; value_change=true; }
 	local tmp=$(grep "^$1=" $MODDIR/lib.sh)
-	value_change=true
 	if [ -z "${3}" ]; then
 		sed -i "s#^$tmp#$1=\'$2\'#g" $MODDIR/lib.sh
 	else

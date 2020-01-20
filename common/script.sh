@@ -61,7 +61,9 @@ iptrules_load() {
 	do
 		# DNS_LOCAL
 		$1 -t nat $2 OUTPUT -p $IPP --dport 53 -m owner ! --uid-owner $(id -u $ServerUID) -j REDIRECT --to-ports $Listen_PORT
-		$1 -t nat $2 POSTROUTING -p $IPP -d 127.0.0.0/8 --dport $Listen_PORT -j SNAT --to-source 127.0.0.1
+		[ ${1} == $IPT ] \
+		&& $1 -t nat $2 POSTROUTING -p $IPP -d 127.0.0.0/8 --dport $Listen_PORT -j SNAT --to-source 127.0.0.1 \
+		|| $1 -t nat $2 POSTROUTING -p $IPP -d ::1/128 --dport $Listen_PORT -j SNAT --to-source ::1
 
 		if [ $Strict ]; then
 		# DNS_EXTERNAL
@@ -77,7 +79,7 @@ iptrules_load() {
 # 防火墙
 iptrules_check()
 {
-	if [ -n "`$IPT -t nat -S OUTPUT | grep -E "dport 53.+REDIRECT.+${Listen_PORT}"`" ]; then
+	if [ -n "`$IPT -t nat -S OUTPUT | grep -E "REDIRECT --to-ports ${Listen_PORT}"`" ]; then
 		echo 'info: iprules √'; return 0
 	else
 		echo 'info: iprules ×'; return 1
@@ -142,8 +144,8 @@ get_args() {
 				case "${2}" in
 					m|main)
 						if [ -n "$(echo $3 | grep -E $i)" ]; then
-							Listen_PORT=$3
 							save_value Listen_PORT $Listen_PORT
+							Listen_PORT=$3
 							shift 2
 						else
 							echo "Error: Invalid value: $3"
@@ -152,8 +154,8 @@ get_args() {
 							;;
 					r|route)
 						if [ -n "$(echo $3 | grep -E $i)" ]; then
-							Route_PORT=$3
 							save_value Route_PORT $Route_PORT
+							Route_PORT=$3
 							shift 2
 						else
 							echo "Error: Invalid value: $3"
@@ -162,8 +164,8 @@ get_args() {
 						;;
 					*)
 						if [ -n "$(echo $2 | grep -E $i)" ]; then
-							Listen_PORT=$2
 							save_value Listen_PORT $Listen_PORT
+							Listen_PORT=$2
 							shift 1
 						else
 							echo "Error: Invalid value: $2"
@@ -176,8 +178,8 @@ get_args() {
 			-u|--user) # 服务器权级
 				case "${2}" in
 					radio|root)
-						ServerUID=$2
 						save_value ServerUID $2
+						ServerUID=$2
 						;;
 					*)
 						echo "Error: Invalid value: $2"
@@ -190,8 +192,8 @@ get_args() {
 			--ip6block) # IPv6
 				case "${2}" in
 					true|false)
-						IP6T_block=$2
 						save_value IP6T_block $2 bool
+						IP6T_block=$2
 						;;
 					*)
 						echo "Error: Invalid value: $2"
@@ -204,8 +206,8 @@ get_args() {
 			--strict) # 限制
 				case "${2}" in
 					true|false)
-						Strict=$2
 						save_value Strict $2 bool
+						Strict=$2
 						;;
 					*)
 						echo "Error: Invalid value: $2"
@@ -226,11 +228,6 @@ get_args() {
 }
 
 process() {
-	if [[ $value_change && "$Service" != 'stop' && server_check ]]; then
-		echo -e 'info: value change !\ninfo: restart server !'
-		Service='start'
-	fi
-
 	case "${Service}" in
 		start) # 启动
 			iptrules_off
@@ -257,6 +254,7 @@ process() {
 				$i -t nat -F PREROUTING
 			done
 			killall -9 $CORE_BINARY >/dev/null 2>&1
+			echo "info: All clean [$(date +'%d/%r')]"
 			;;
 	esac
 }
@@ -281,6 +279,12 @@ main() {
 			usage 0
 		else
 			get_args "$@"
+			if [[ $value_change && -z "$Service" ]]; then
+				local tmp
+				echo -n "info: Do you want to restart the server (y/n): "
+				read -r tmp
+				[[ "$tmp" == 'y' || "$tmp" == 'Y' ]] && Service='start'
+			fi
 			process
 		fi
 	fi
