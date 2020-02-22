@@ -1,32 +1,21 @@
 SKIPUNZIP=1
 	version=$(grep_prop version $TMPDIR/module.prop | awk -F " " '{print $1}')
 	ui_print "****************"
-	ui_print " Smartdns - Android"
+	ui_print " SmartDNS - Android"
 	ui_print " $version"
 	ui_print " pymumu (module by x4455)"
 	ui_print "****************"
 
-ui_print "- Extracting module files"
-
-unzip -oj "$ZIPFILE" module.prop 'common/*' -d $TMPDIR >&2
-unzip -o "$ZIPFILE" 'system/*' -d $MODPATH >&2
-cp -af $TMPDIR/post-fs-data.sh $MODPATH
-cp -af $TMPDIR/service.sh $MODPATH
-cp -af $TMPDIR/uninstall.sh $MODPATH
-	cp -af $TMPDIR/lib.sh $MODPATH
-	cp -af $TMPDIR/configs_update.sh $MODPATH
-	cp -af $TMPDIR/script.sh $MODPATH/system/xbin/smartdns
-
-	[ $MAGISK_VER_CODE -gt 18100 ] || \
-	{ 
+	[ $MAGISK_VER_CODE -gt 18100 ] || { 
 	ui_print "*******************************"
 	ui_print " Please install Magisk v19.0+! "
-	abort "*******************************"
-	}
-
+	abort "*******************************"; }
 	[ $API -ge 28 ] && { ui_print '(!) Please close the Private DNS to prevent conflict.'; }
 
-	# Install script
+	ui_print "- Extracting module files"
+	unzip -oj "$ZIPFILE" 'common/*' -d $MODPATH >&2
+	unzip -oj "$ZIPFILE" 'binary/*' -d $TMPDIR >&2
+
 	case $ARCH in
 	arm|arm64|x86|x64)
 		BINARY_PATH=$TMPDIR/server-$ARCH ;;
@@ -35,37 +24,40 @@ cp -af $TMPDIR/uninstall.sh $MODPATH
 	esac
 
 	MODDIR=$MODPATH
-	. $TMPDIR/lib.sh
+	. $MODDIR/lib.sh
 
 	if [ -f "$BINARY_PATH" -a -f $TMPDIR/setuidgid ]; then
-		set_perm $BINARY_PATH 0 0 0755
+		chmod 0755 $BINARY_PATH
 		ver=$($BINARY_PATH -v | awk -F " " '{print $2}')
 		ui_print "- Version: [$ver]"
 		sed -i -e "s/<VER>/${ver}/" $TMPDIR/module.prop
 
 		mkdir $CORE_INTERNAL_DIR
-		cp -af $BINARY_PATH $CORE_INTERNAL_DIR/$CORE_BINARY
-		cp -af $TMPDIR/setuidgid $CORE_INTERNAL_DIR
+		cp $BINARY_PATH $CORE_INTERNAL_DIR/$CORE_BINARY
+		cp $TMPDIR/setuidgid $CORE_INTERNAL_DIR
 	else
 		abort "(E) $ARCH binary file missing."
 	fi
 
 	if [ $(ls $DATA_INTERNAL_DIR | wc -l) -eq 0 ]; then
 		ui_print ""
-		ui_print '(!!!) 默认仅提供基础联网功能，需要您自行设置配置。'
 		ui_print '(!!!) Requires you to set the configuration yourself,'
 		ui_print ' only basic networking features are provided by default.'
+		ui_print '(!!!) 默认仅提供基础联网功能，需要您自行设置配置。'
 		ui_print ""
-		unzip -o "$ZIPFILE" 'config/*' -d $TMPDIR >&2
 		mkdir -p $DATA_INTERNAL_DIR
-		cp -rf $TMPDIR/config/* $DATA_INTERNAL_DIR
+		unzip -oj "$ZIPFILE" 'config/*' -d $DATA_INTERNAL_DIR >&2
 		sleep 5
+	else
+		unzip -oj "$ZIPFILE" 'config/smartdns.conf' -d $TMPDIR >&2
+		cp -af $TMPDIR/smartdns.conf $DATA_INTERNAL_DIR/example-smartdns.conf
 	fi
 
-	cp -af $TMPDIR/module.prop $MODPATH
+	cp $TMPDIR/module.prop $MODPATH
+	touch $MODPATH/skip_mount
 
-ui_print "- Setting permissions"
-
+	ui_print "- Setting permissions"
 	set_perm_recursive $MODPATH 0 0 0755 0644
 	set_perm_recursive $CORE_INTERNAL_DIR 0 0 0755 0755
-	set_perm_recursive $MODPATH/system 0 0 0755 0755
+	set_perm $MODPATH/script.sh 0 2000 0755
+	set_perm $MODPATH/lib.sh 0 2000 0755
