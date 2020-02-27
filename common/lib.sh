@@ -1,15 +1,16 @@
 #!/system/bin/sh
-### Make sure to stop the server before modifying the parameters
-
+### Make sure to stop the server
+### before modifying the parameters
 # Main listen port
 Listen_PORT='6053'
 # Route listen port
 Route_PORT=''
 
 # Service Mode
-#  proxy: Proxy local and other query
+#  local: Proxy local only
+#  proxy: Proxy local and External query
 #  server: Expecting the server only
-MODE='proxy'
+MODE='local'
 
 # iptables block IPv6 port 53 [true/false]
 # or Redirect query
@@ -44,7 +45,8 @@ CORE_BOOT="$CORE_DIR/$CORE_BINARY -c $DATA_DIR/smartdns.conf -p $ROOT/server.pid
 ################
 
 save_value() {
-	[ service_check != '3' ] && { iptrules_off; killall $CORE_BINARY >/dev/null 2>&1; value_change=true; }
+	service_check
+	[ "$?" != '3' ] && { change=true; iptrules_off; killall $CORE_BINARY >/dev/null 2>&1; }
 	local tmp=$(grep "^$1=" $MODDIR/lib.sh)
 	if [ -z "${3}" ]; then
 		sed -i "s#^$tmp#$1=\'$2\'#g" $MODDIR/lib.sh
@@ -54,10 +56,29 @@ save_value() {
 	return $?
 }
 
+## Check
+iptrules_check()
+{
+	if [ -n "`$IPT -t nat -S | grep -E "REDIRECT --to-ports ${Listen_PORT}"`" ]; then
+		echo 'info: iprules √'; return 0
+	else
+		echo 'info: iprules ×'; return 1
+	fi
+}
+
+server_check()
+{
+	if [ -n "`pgrep $CORE_BINARY`" ]; then
+		echo 'info: Server √'; return 0
+	else
+		echo 'info: Server ×'; return 1
+	fi
+}
+
 service_check() {
 	local i=0
 	server_check || i=`expr $i + 2`
-	[ $MODE == 'proxy' ] && iptrules_check || ((++i))
+	[ $MODE == 'server' ] || iptrules_check || ((++i))
 
 	case ${i} in
 		3)  # Not working
@@ -69,4 +90,13 @@ service_check() {
 		0)  # Working
 			return 0 ;;
 	esac
+}
+# legality
+port_valid() {
+	if [ -n "`echo $2 | grep -E '(^[1-9][0-9]{0,3}$)|(^[1-5][0-9]{4}$)|(^6[0-5]{2}[0-3][0-5]$)'`" ]; then
+		return 0
+	else
+		echo "Error: Invalid value: $2"
+		exit 1
+	fi
 }

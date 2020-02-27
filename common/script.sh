@@ -12,11 +12,11 @@ Valid options are:
     -status
         Service Status
     -clean
-        Clear all rules and stop server
+        Clear OUTPUT, POSTROUTING, PREROUTING rules and stop server
     -h, --help
         Get help
-    -m, --mode [proxy / server]
-        Mode
+    -m, --mode [local / proxy / server]
+        ├─ local: Proxy local only
         ├─ proxy: Proxy local and other query
         └─ server: Expecting the server only
     -p, --port [main / route] {port}
@@ -34,13 +34,13 @@ HELP
 ## 防火墙
 # 主控
 iptrules_on() {
-	[ $MODE == 'proxy' ] || return 0
+	[ "$MODE" == 'server' ] && return 0
 	iptrules_load $IPT -I
 	ip6trules_switch -I
 }
 
 iptrules_off() {
-	[ $MODE == 'proxy' ] || return 0
+	[ "$MODE" == 'server' ] && return 0
 	local i=0
 	while iptrules_check; do
 		iptrules_load $IPT -D
@@ -60,63 +60,47 @@ ip6trules_switch() {
 
 # 加载
 iptrules_load() {
-	# $2  -I / -D
+	# $1 [ iptables / ip6tables] $2 [ -I / -D ]
 	echo "info: ${1##\/*\/} $2"
 
 	for IPP in 'tcp' 'udp'
 	do
 		# LOCAL
-		$1 -t nat $2 OUTPUT -p $IPP --dport 53 -m owner ! --uid-owner $(id -u $ServerUID) -j REDIRECT --to-ports $Listen_PORT
+		$1 -t nat $2 OUTPUT -p $IPP -m mark --mark 0x653 -j REDIRECT --to-ports $Listen_PORT
+		$1 -t nat $2 OUTPUT -p $IPP --dport 53 -m owner ! --uid-owner $(id -u $ServerUID) -j MARK --set-xmark 0x653
 		# IPv4 / IPv6
-		if [ ${1} == $IPT ]; then
-			# LOCAL
-			$1 -t nat $2 POSTROUTING -p $IPP -d 127.0.0.0/8 --dport $Listen_PORT -j SNAT --to-source 127.0.0.1
-			if [ $Strict ]; then
-				# EXTERNAL
-				$1 -t nat $2 PREROUTING -p $IPP -s 10.0.0.0/8 --dport 53 -j REDIRECT --to-ports $Route_PORT
-				$1 -t nat $2 PREROUTING -p $IPP -s 192.168.0.0/16 --dport 53 -j REDIRECT --to-ports $Route_PORT
-			else
-				$1 -t nat $2 PREROUTING -p $IPP --dport 53 -j REDIRECT --to-ports $Route_PORT
+		if [ "${1}" == "$IPT" ]; then
+			# IPv4 LOCAL
+			$1 -t nat $2 POSTROUTING -p $IPP -m mark --mark 0x653 -j SNAT --to-source 127.0.0.1
+			if [ "$MODE" == 'proxy' ]; then
+				if [ $Strict ]; then
+					# IPv4 EXTERNAL
+					$1 -t nat $2 PREROUTING -p $IPP -s 172.16.0.0/12 --dport 53 -j REDIRECT --to-ports $Route_PORT
+					$1 -t nat $2 PREROUTING -p $IPP -s 10.0.0.0/8 --dport 53 -j REDIRECT --to-ports $Route_PORT
+					$1 -t nat $2 PREROUTING -p $IPP -s 192.168.0.0/16 --dport 53 -j REDIRECT --to-ports $Route_PORT
+				else
+					$1 -t nat $2 PREROUTING -p $IPP --dport 53 -j REDIRECT --to-ports $Route_PORT
+				fi
 			fi
 		else
-			# LOCAL
-			$1 -t nat $2 POSTROUTING -p $IPP -d ::1/128 --dport $Listen_PORT -j SNAT --to-source ::1
-			if [ $Strict ]; then
-				# EXTERNAL
-				$1 -t nat $2 PREROUTING -p $IPP -s fec0::/10 --dport 53 -j REDIRECT --to-ports $Route_PORT
-			else
-				$1 -t nat $2 PREROUTING -p $IPP --dport 53 -j REDIRECT --to-ports $Route_PORT
+			# IPv6 LOCAL
+			$1 -t nat $2 POSTROUTING -p $IPP -m mark --mark 0x653 -j SNAT --to-source ::1
+			if [ "$MODE" == 'proxy' ]; then
+				if [ $Strict ]; then
+					# IPv6 EXTERNAL
+					$1 -t nat $2 PREROUTING -p $IPP -s fec0::/10 --dport 53 -j REDIRECT --to-ports $Route_PORT
+				else
+					$1 -t nat $2 PREROUTING -p $IPP --dport 53 -j REDIRECT --to-ports $Route_PORT
+				fi
 			fi
 		fi
 	done
-}
-
-## 检查
-# 防火墙
-iptrules_check()
-{
-	if [ -n "`$IPT -t nat -S OUTPUT | grep -E "REDIRECT --to-ports ${Listen_PORT}"`" ]; then
-		echo 'info: iprules √'; return 0
-	else
-		echo 'info: iprules ×'; return 1
-	fi
-}
-
-# 服务器进程
-server_check()
-{
-	if [ -n "`pgrep $CORE_BINARY`" ]; then
-		echo 'info: Server √'; return 0
-	else
-		echo 'info: Server ×'; return 1
-	fi
 }
 
 ## 其他
 # (重)启动服务器
 server_start() {
 	killall -9 $CORE_BINARY >/dev/null 2>&1
-	#sleep 1
 	# setuidgid [UID GID GROUPS]
 	$CORE_DIR/setuidgid $(id -u $ServerUID) $(id -g $ServerUID) $(id -g $ServerUID),$(id -g inet),$(id -g media_rw) $CORE_BOOT
 	if [ server_check ]; then
@@ -152,46 +136,36 @@ get_args() {
 				Service='clean'
 				;;
 
-				# 修改数值
-
+			# 修改数值
 			-p|--port) # 端口设定
 				case "${2}" in
 					m|main)
-						if [ -n "`echo $3 | grep -E '(^[1-9][0-9]{0,3}$)|(^[1-5][0-9]{4}$)|(^6[0-5]{2}[0-3][0-5]$)'`" ]; then
-							save_value Listen_PORT $3
-							Listen_PORT=$3
-							shift 2
-						else
-							echo "Error: Invalid value: $3"
-							exit 1
+						shift
+						if [ port_valid ]; then
+							save_value Listen_PORT $2
+							Listen_PORT=$2
 						fi
 							;;
 					r|route)
-						if [ -n "`echo $3 | grep -E '(^[1-9][0-9]{0,3}$)|(^[1-5][0-9]{4}$)|(^6[0-5]{2}[0-3][0-5]$)'`" ]; then
-							save_value Route_PORT $3
-							Route_PORT=$3
-							shift 2
-						else
-							echo "Error: Invalid value: $3"
-							exit 1
+						shift
+						if [ port_valid ]; then
+							save_value Route_PORT $2
+							Route_PORT=$2
 						fi
 						;;
 					*)
-						if [ -n "`echo $2 | grep -E '(^[1-9][0-9]{0,3}$)|(^[1-5][0-9]{4}$)|(^6[0-5]{2}[0-3][0-5]$)'`" ]; then
+						if [ port_valid ]; then
 							save_value Listen_PORT $2
 							Listen_PORT=$2
-							shift 1
-						else
-							echo "Error: Invalid value: $2"
-							exit 1
 						fi
 						;;
 				esac
+				shift
 				;;
 
 			-m|--mode) # 工作模式
 				case "${2}" in
-					proxy|server)
+					local|proxy|server)
 						save_value MODE $2
 						MODE=$2
 						;;
@@ -200,7 +174,7 @@ get_args() {
 						exit 1
 						;;
 				esac
-				shift 1
+				shift
 				;;
 
 			-u|--user) # 服务器权级
@@ -214,7 +188,7 @@ get_args() {
 						exit 1
 						;;
 				esac
-				shift 1
+				shift
 				;;
 
 			--ip6block) # IPv6
@@ -228,7 +202,7 @@ get_args() {
 						exit 1
 						;;
 				esac
-				shift 1
+				shift
 				;;
 
 			--strict) # 限制
@@ -242,7 +216,7 @@ get_args() {
 						exit 1
 						;;
 				esac
-				shift 1
+				shift
 				;;
 
 			*)
@@ -251,12 +225,12 @@ get_args() {
 				;;
 
 			esac
-		shift 1
+		shift
 	done
 }
 
 process() {
-	case "${Service}" in
+	case "$Service" in
 		start) # 启动
 			iptrules_off
 			server_start && iptrules_on
@@ -275,6 +249,7 @@ process() {
 
 		clean) # 清除所有防火墙规则
 			local i
+			$IP6T -t filter -F OUTPUT
 			for i in "$IPT" "$IP6T"
 			do
 				$i -t nat -F OUTPUT
@@ -288,8 +263,8 @@ process() {
 }
 
 main() {
-	Listen_PORT='6453'; Route_PORT=''
-	MODE='proxy'
+	Listen_PORT='6053'; Route_PORT=''
+	MODE='local'
 	ServerUID='radio'
 	IP6T_block=true
 	Strict=true
@@ -297,21 +272,21 @@ main() {
 	[ -z "$Route_PORT" ] && Route_PORT=$Listen_PORT
 
 	if [ "${1}" == '--b' ]; then
-		shift 1
+		shift
 		$CORE_DIR/$CORE_BINARY $*
-	elif [ "${1}" == '-binary' ]; then
-		shift 1
+	elif [ "${1}" == '-b' ]; then
+		shift
 		$CORE_BOOT $*
 	else
 		if [ -z "${1}" ]; then
 			usage 0
 		else
 			get_args "$@"
-			if [[ $value_change && -z "$Service" ]]; then
+			if [[ $change && -z "$Service" ]]; then
 				local i
 				echo -n "info: Do you want to restart the server (y/n): "
 				read -r i
-				[[ "$tmp" == 'y' || "$tmp" == 'Y' ]] && Service='start'
+				[[ "$i" == 'y' || "$i" == 'Y' ]] && Service='start'
 			fi
 			process
 		fi

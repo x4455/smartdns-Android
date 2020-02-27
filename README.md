@@ -29,8 +29,8 @@ SmartDNS是一个运行在本地的DNS服务器。SmartDNS会从多个上游DNS�
 ~ -status
 # 服务状态
 
-~ --clean
-# 清除所有规则并停止
+~ -clean
+# 清除 OUTPUT, POSTROUTING, PREROUTING 规则并停止
 
 ~ -h, --help
 # 帮助信息
