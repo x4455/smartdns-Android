@@ -13,6 +13,7 @@ mkdir -p "$DATA_DIR"
 ln -fs $MODDIR/script.sh /sbin/smartdns
 mount -o bind "$CORE_INTERNAL_DIR" "$CORE_DIR"
 mount -o bind "$DATA_INTERNAL_DIR" "$DATA_DIR"
+ln -fs $MODDIR/lib.sh $DATA_DIR/library.sh
 
 while [[ ! -d "/sdcard/Android" ]]
 do
@@ -20,7 +21,7 @@ do
 done
 
 sh $MODDIR/script.sh -start
-sleep 7
+sleep 5
 cat $(grep "log-file " $DATA_DIR/smartdns.conf | awk -F " " '{print $2}')
 
 exit 0

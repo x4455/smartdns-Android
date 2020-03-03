@@ -18,7 +18,7 @@ SKIPUNZIP=1
 
 	case $ARCH in
 	arm|arm64|x86|x64)
-		BINARY_PATH=$TMPDIR/server-$ARCH ;;
+		BINARY_PATH=$TMPDIR/$MODID-$ARCH ;;
 	*)
 		abort "(E) $ARCH are unsupported architecture." ;;
 	esac

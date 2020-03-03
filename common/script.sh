@@ -263,13 +263,8 @@ process() {
 }
 
 main() {
-	Listen_PORT='6053'; Route_PORT=''
-	MODE='local'
-	ServerUID='radio'
-	IP6T_block=true
-	Strict=true
 	. $MODDIR/lib.sh || { echo "Error: Can't load lib!"; exit 1; }
-	[ -z "$Route_PORT" ] && Route_PORT=$Listen_PORT
+	[ -z $Route_PORT ] && Route_PORT=$Listen_PORT
 
 	if [ "${1}" == '--b' ]; then
 		shift
@@ -278,11 +273,11 @@ main() {
 		shift
 		$CORE_BOOT $*
 	else
-		if [ -z "${1}" ]; then
+		if [ -z ${1} ]; then
 			usage 0
 		else
 			get_args "$@"
-			if [[ $change && -z "$Service" ]]; then
+			if [[ $change && -z $Service ]]; then
 				local i
 				echo -n "info: Do you want to restart the server (y/n): "
 				read -r i
