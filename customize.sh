@@ -26,17 +26,19 @@ SKIPUNZIP=1
 	rm $MODPATH/binary/ca-certificates.zip
 
 	#工具
-	unzip -oj "$ZIPFILE" 'common/*' -x 'common/tools/*' -d $MODPATH >&2
-	unzip -o "$ZIPFILE" 'common/tools/*' -d $TMPDIR >&2
-	mv $TMPDIR/common/tools $MODPATH
+	unzip -oj "$ZIPFILE" 'common/*' -d $MODPATH >&2
+	unzip -o "$ZIPFILE" 'tools/*' -x 'tools/placeholder' -d $MODPATH >&2
 
-	#路径转换
+	#为lib提供路径转换
 	MODDIR=$MODPATH
-	oldver=`grep -E '^version=' ${MODPATH/modules_update/modules}/module.prop | awk -F '[()]' '{print $2}'` || oldver='0'
+	#获取旧版本
+	OLDPATH=${MODPATH/modules_update/modules}
+	[ -f $OLDPATH/module.prop ] && \
+	 { oldver=`grep -E '^version=' $OLDPATH/module.prop | awk -F '[()]' '{print $2}'`; }||{ oldver=''; }
 	. $MODDIR/lib.sh
 	touch $MODPATH/skip_mount
 
-	#版本信息
+	#版本信息 写入module
 	if [ -f "$BINARY_PATH" ]; then
 		chmod 0755 $BINARY_PATH
 		ver=$($BINARY_PATH -v | awk -F " " '{print $2}')
@@ -49,6 +51,7 @@ SKIPUNZIP=1
 	fi
 
 	#配置文件
+	# 若配置路径已存在，则版本更新后释放示例文件
 	if [ ! -d $DATA_INTERNAL_DIR ]; then
 		ui_print ''
 		ui_print '(!!!) Requires you to set the configuration yourself.'
@@ -56,11 +59,11 @@ SKIPUNZIP=1
 		ui_print ''
 		mkdir -p $DATA_INTERNAL_DIR
 		unzip -o "$ZIPFILE" 'config/*' -d $TMPDIR >&2
-		mv $TMPDIR/config/* $DATA_INTERNAL_DIR/
+		cp $TMPDIR/config/* $DATA_INTERNAL_DIR/
 		sleep 5
 	elif [ "$oldver" != "$ver" ]; then
 		unzip -oj "$ZIPFILE" 'config/smartdns.conf' -d $TMPDIR >&2
-		mv $TMPDIR/smartdns.conf $DATA_INTERNAL_DIR/example-smartdns.conf
+		cp $TMPDIR/smartdns.conf $DATA_INTERNAL_DIR/example-smartdns.conf
 	fi
 
 	ui_print '- Setting permissions'
@@ -85,10 +88,10 @@ inherit() {
 }
 
 # Recovery mode cannot inherit settings
-if [ "$BOOTMODE" == 'true' -a -f ${MODPATH/modules_update/modules}/lib.sh ]; then
+if [ "$BOOTMODE" == 'true' -a -f $OLDPATH/lib.sh ]; then
 	ui_print '- Try to inherit settings'
 	ui_print ' (!!!) Unexpected errors can occur.'
-	. ${MODPATH/modules_update/modules}/lib.sh || exit 0
+	. $OLDPATH/lib.sh || exit 0
 	inherit Route_PORT "$Route_PORT"
 	inherit Listen_PORT "$Listen_PORT"
 	inherit mode "$mode"
