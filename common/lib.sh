@@ -41,7 +41,6 @@ ROOT="/dev/smartdns"
 
 CORE_INTERNAL_DIR="$MODDIR/binary"
 DATA_INTERNAL_DIR="/data/adb/smartdns"
-#permission issues /data/media/0/Android/smartdns
 
 CORE_DIR="$ROOT/binary"
 DATA_DIR="$ROOT/config"

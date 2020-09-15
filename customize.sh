@@ -29,19 +29,24 @@ SKIPUNZIP=1
 	unzip -oj "$ZIPFILE" 'common/*' -d $MODPATH >&2
 	unzip -o "$ZIPFILE" 'tools/*' -x 'tools/placeholder' -d $MODPATH >&2
 
+	#创建/etc/resolv.conf
+	etcPATH=$(ls -l /etc |awk -F ' -> ' '{print $2}')
+	mkdir -p $MODPATH$etcPATH
+	echo -e 'domain lan\nnameserver 8.8.8.8\nnameserver 9.9.9.9' > $MODPATH$etcPATH/resolv.conf
+	#touch $MODPATH/skip_mount
+
 	#为lib提供路径转换
 	MODDIR=$MODPATH
 	#获取旧版本
-	OLDPATH=${MODPATH/modules_update/modules}
-	[ -f $OLDPATH/module.prop ] && \
-	 { oldver=`grep -E '^version=' $OLDPATH/module.prop | awk -F '[()]' '{print $2}'`; }||{ oldver=''; }
+	oldPATH=${MODPATH/modules_update/modules}
+	[ -f $oldPATH/module.prop ] && \
+	 { oldver=`grep -E '^version=' $oldPATH/module.prop |awk -F '[()]' '{print $2}'`; }||{ oldver=''; }
 	. $MODDIR/lib.sh
-	touch $MODPATH/skip_mount
 
 	#版本信息 写入module
 	if [ -f "$BINARY_PATH" ]; then
 		chmod 0755 $BINARY_PATH
-		ver=$($BINARY_PATH -v | awk -F " " '{print $2}')
+		ver=$($BINARY_PATH -v |awk -F ' ' '{print $2}')
 		ui_print "- Server version: [$ver]"
 		sed -i -e "s/<VER>/${ver}/" $TMPDIR/module.prop
 		cp $TMPDIR/module.prop $MODPATH
@@ -87,11 +92,11 @@ inherit() {
 	fi
 }
 
-# Recovery mode cannot inherit settings
-if [ "$BOOTMODE" == 'true' -a -f $OLDPATH/lib.sh ]; then
+	# Recovery mode cannot inherit settings
+if [ "$BOOTMODE" == 'true' -a -f $oldPATH/lib.sh ]; then
 	ui_print '- Try to inherit settings'
-	ui_print ' (!!!) Unexpected errors can occur.'
-	. $OLDPATH/lib.sh || exit 0
+	ui_print '(!!!) Unexpected errors can occur.'
+	. $oldPATH/lib.sh || exit 0
 	inherit Route_PORT "$Route_PORT"
 	inherit Listen_PORT "$Listen_PORT"
 	inherit mode "$mode"
