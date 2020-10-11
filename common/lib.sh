@@ -1,37 +1,4 @@
 #!/system/bin/sh
-### Make sure to stop the server
-### before modifying the parameters
-# Main listen port
-Listen_PORT='6053'
-# Route listen port
-Route_PORT='6553'
-
-# Service Mode
-# Server | Local rules | Proxy rules
-# (null) | L | P
-mode='L'
-
-# Redirect tun+
-vpn=false
-
-# Accept query (Package_name or UID)
-pkg='com.github.shadowsocks com.github.kr328.clash'
-
-# Block IPv6 port 53 or Redirect query
-IP6T_block=false
-
-# Limit queries from non-LAN
-strict=true
-
-# Server permission [radio/root] (`bind :53` or `speed-check-mode ping` want to use root)
-ServerUID='root'
-
-# Boot tools script (Leave blank to execute all or 'disable')
-tools='disable'
-
-
-
-####################
 # Don't modify it. # Don't modify it. # Don't modify it.
 # PATHs
 IPT="/system/bin/iptables"
@@ -40,42 +7,79 @@ IP6T="/system/bin/ip6tables"
 ROOT="/dev/smartdns"
 
 CORE_INTERNAL_DIR="$MODDIR/binary"
-DATA_INTERNAL_DIR="/data/adb/smartdns"
+DATA_INTERNAL_DIR="/data/adb/smartdns-data"
 
 CORE_DIR="$ROOT/binary"
 DATA_DIR="$ROOT/config"
-PID_file="$ROOT/server.pid"
-CORE_BINARY="smartdns-server"
-CORE_BOOT="$CORE_DIR/$CORE_BINARY -c $DATA_DIR/smartdns.conf -p $PID_file"
 
-#####
+SET_FILE="$DATA_INTERNAL_DIR/script.conf"
+PIDFILE="$ROOT/server.pid"
+
+CORE_BINARY="smartdns-server"
+CORE_BOOT="$CORE_BINARY -c $DATA_DIR/smartdns.conf -p $PIDFILE"
+#CORE_BOOT="$CORE_DIR/$CORE_BINARY
+
+##############
 # Lib functions
 server_start() {
 	# setuidgid [UID GID GROUPS]
-	$CORE_DIR/setuidgid $(id -u $ServerUID) $(id -g $ServerUID) $(id -g $ServerUID),$(id -g inet),$(id -g media_rw) $CORE_BOOT
-	if [ server_check ]; then
-		echo "[Info]: Server start [$(date +'%d/%r')]"
-		return 0
-	else
-		echo '[Error]: start server failed.'
+	cd $CORE_DIR
+	./setuidgid $(id -u $ServerUID) $(id -g $ServerUID) $(id -g $ServerUID),$(id -g inet),$(id -g media_rw) $CORE_BOOT
+	cd - 1>/dev/null
+	#$CORE_DIR/setuidgid
+
+	while true; do
+		if [ -e "$PIDFILE" ]; then
+			break;
+		fi
+		sleep .5
+	done
+	PID="$(cat $PIDFILE 2>/dev/null)"
+	if [ -z "$PID" ]; then
+		echo '[Error]: start smartdns server failed.'
 		exit 1
 	fi
+	if [ ! -e "/proc/$PID" ]; then
+		echo '[Error]: start smartdns server failed.'
+		exit 1
+	fi
+	echo '[Info]: start smartdns server success.'
+}
+
+server_stop() {
+	if [ ! -f "$PIDFILE" ]; then
+		echo '[Info]: smartdns server is stopped.'
+		return 0
+	fi
+	PID="$(cat $PIDFILE 2>/dev/null)"
+	if [ ! -e "/proc/$PID" ] || [ -z "$PID" ]; then
+		echo '[Info]: smartdns server is stopped'
+		return 0
+	fi
+
+	kill -TERM "$PID"
+	if [ $? -ne 0 ]; then
+		echo '[Error]: Stop smartdns server failed.'
+		exit 1;
+	fi
+	rm -f "$PIDFILE"
+	echo '[Info]: Stop smartdns server success.'
 }
 
 save_values() {
-	[ iptrules_check -o server_check ] && { iptrules_off; kill -s 9 `cat $PID_file`; echo '[Info]: Server stop'; }
-	local tmp=$(grep "^${1}=" $MODDIR/lib.sh)
+	[ iptrules_check -o server_check ] && { iptrules_off; server_stop; echo '[Info]: Server stop'; }
+	local tmp=$(grep "^${1}=" $SET_FILE)
 	if [ "${2}" != 'bool' ]; then
-		sed -i "s#^$tmp#${1}=\'${2}\'#g" $MODDIR/lib.sh
+		sed -i "s#^$tmp#${1}=\'${2}\'#g" $SET_FILE
 	else
 		if [ "${3}" == 'true' -o "${3}" == 'false' ]; then
-			sed -i "s#^$tmp#${1}=${3}#g" $MODDIR/lib.sh
+			sed -i "s#^$tmp#${1}=${3}#g" $SET_FILE
 		elif [[ "${3}" == -* || -z "${3}" ]]; then
 			if [ "$(echo $tmp |awk -F "=" '{print $2}')" == 'true' ]; then
-				sed -i "s#^$tmp#${1}=false#g" $MODDIR/lib.sh
+				sed -i "s#^$tmp#${1}=false#g" $SET_FILE
 				return 2
 			else
-				sed -i "s#^$tmp#${1}=true#g" $MODDIR/lib.sh
+				sed -i "s#^$tmp#${1}=true#g" $SET_FILE
 				return 1
 			fi
 		else
@@ -96,13 +100,19 @@ iptrules_check() {
 }
 
 server_check() {
-	[ -f $PID_file ] && local cmd_file="/proc/`cat $PID_file`/cmdline" || return 1
-	[ -f $cmd_file ] && grep -q $CORE_DIR/$CORE_BINARY $cmd_file && return 0 || return 1
+	if [ ! -f "$PIDFILE" ]; then
+		return 1
+	fi
+	PID="$(cat $PIDFILE 2>/dev/null)"
+	if [ ! -e "/proc/$PID" ] || [ -z "$PID" ]; then
+		return 1
+	fi
+	return 0
 }
 
 service_check() {
 	local i=0 a=0
-	server_check && echo '[Info]: Server √' || { echo '[Info]: Server ×'; let i+=2; }
+	server_check && { echo '[Info]: server is working.'; } || { echo '[Info]: server is stopped'; let i+=2; }
 	if [ -n "$mode" ]; then
 		if echo $mode |grep -q 'L'; then
 			$IPT -t nat -S OUTPUT |grep -q -E "REDIRECT.+$Listen_PORT" || { let a--; echo '[Warning]: LocalRules not added.'; }
@@ -111,9 +121,9 @@ service_check() {
 			$IPT -t nat -S PREROUTING |grep -q -E "REDIRECT.+$Route_PORT" || { let a--; echo '[Warning]: ProxyRules not added.'; }
 		fi
 		if [ "$a" -eq 0 ]; then
-			echo '[Info]: iprules √'
+			echo '[Info]: iptables rules loaded.'
 		else
-			echo '[Info]: iprules ×'; let i++
+			echo '[Info]: iptables rules not load.'; let i++
 		fi
 	fi
 	case $i in

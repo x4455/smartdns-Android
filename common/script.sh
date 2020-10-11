@@ -1,6 +1,6 @@
 #!/system/bin/sh
 MODDIR=/data/adb/modules/smartdns
-[ ! -d $ROOT ] && { echo "${MODDIR##\/*\/}: Module disable."; exit 1; }
+[ ! -d $ROOT ] && { echo "${MODDIR##\/*\/}: Module disabled."; exit 1; }
 
 usage() {
 cat << HELP
@@ -52,7 +52,7 @@ iptrules_off() {
 	do
 		iptrules_load $IPT -D
 		ip6trules_switch -D
-		[[ ${i} > 2 ]] && { echo '[Error]: iptrules error.\n[Warning]: Run \`~ -clean\` to reset iptrules.'; exit 1; } || let i++
+		[[ ${i} > 3 ]] && { echo '[Error]: iptrules error.\n[Warning]: Run \`~ -clean\` to reset iptrules.'; exit 1; } || let i++
 	done
 }
 
@@ -89,17 +89,19 @@ iptrules_load() {
 			fi
 		fi
 		# EXTERNAL
+####	代理模式目前仍有问题
 		if echo $mode |grep -q 'P'; then
 			if [ "$1" == "$IPT" ]; then
 				for IP in "$(ifconfig |grep "inet addr" |grep -v ":127" |grep "Bcast" |awk '{print $2}' |awk -F: '{print $2}')"
 				do
+					# 忘记什么操作了
 					[ "$strict" != 'true' ] && echo $IP |grep -q -E '(^192\.168\.*)|(^10\.*)' && continue
 					# IPv4 EXTERNAL
 					$1 -t nat $2 PREROUTING -p $IPP -d "$IP" --dport 53 -j REDIRECT --to-ports $Route_PORT
 				done
-			#	# IPv6 EXTERNAL
-			#	$1 -t nat $2 PREROUTING -p $IPP --dport 53 -j REDIRECT --to-ports $Route_PORT
 			fi
+			#	放弃v6代理# IPv6 EXTERNAL
+			#	$1 -t nat $2 PREROUTING -p $IPP --dport 53 -j REDIRECT --to-ports $Route_PORT
 		fi
 	done
 }
@@ -140,21 +142,22 @@ get_args() {
 			;;
 
 		-start) # 启动
+			#貌似没必要
 			case "$2" in
-				'server')
-					server_check && kill -s 9 `cat $PID_file` && sleep 1
+				ser*)
+					server_stop && sleep .5
 					server_start
 					echo "[Info]: Server started."
 					shift
 					;;
-				'iprules')
+				ipr*)
 					iptrules_off
 					iptrules_on
 					echo "[Info]: iptrules added."
 					shift
 					;;
 				*)
-					server_check && kill -s 9 `cat $PID_file`
+					server_stop
 					iptrules_off
 					server_start && iptrules_on
 					echo "[Info]: Service started."
@@ -164,8 +167,7 @@ get_args() {
 
 		-stop) # 停止
 			iptrules_off
-			server_check && kill -s 9 `cat $PID_file`
-			echo "[Info]: Service stoped."
+			server_stop
 			;;
 
 		-status) # 检查状态
@@ -179,7 +181,7 @@ get_args() {
 			ip6tables -F
 			iptables-restore < $ROOT/iptables.origin
 			ip6tables-restore < $ROOT/ip6tables.origin
-			server_check && kill -s 9 `cat $PID_file`
+			server_stop
 			echo '[Info]: All clean.'
 			;;
 
@@ -278,6 +280,8 @@ get_args() {
 
 # main
 	. $MODDIR/lib.sh || { echo '[Error]: lib.sh not exist.'; exit 1; }
+	. $SET_FILE || { echo '[Error]: script settings not exist.'; exit 1; }
+
 	[ -z "$Listen_PORT" ] && { echo '[Error]: Listen_PORT not set.'; exit 1; }
 	echo $mode |grep -q 'P' && [ -z "$Route_PORT" ] && { mode=${mode//P/}; echo '[Warning]: Route_PORT not set.'; }
 	[ "$vpn" == 'true' ] && vpn='' || vpn='! -o tun+'
