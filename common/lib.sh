@@ -21,10 +21,12 @@ CORE_BOOT="$CORE_BINARY -c $DATA_DIR/smartdns.conf -p $PIDFILE"
 
 ##############
 # Lib functions
+##############
 server_start() {
 	# setuidgid [UID GID GROUPS]
 	cd $CORE_DIR
-	./setuidgid $(id -u $ServerUID) $(id -g $ServerUID) $(id -g $ServerUID),$(id -g inet),$(id -g media_rw) $CORE_BOOT
+	#./setuidgid $(id -u $ServerUID) $(id -g $ServerUID) $(id -g $ServerUID),$(id -g inet),$(id -g media_rw) $CORE_BOOT
+	./setuidgid $(id -u $ServerUID) $(id -g $ServerUID) $(id -g $ServerUID),$(id -g inet) $CORE_BOOT
 	cd - 1>/dev/null
 	#$CORE_DIR/setuidgid
 
@@ -92,11 +94,20 @@ save_values() {
 
 # Check
 iptrules_check() {
-	if $IPT -t nat -S |grep -q -E "REDIRECT.+($Listen_PORT|$Route_PORT)$"; then
+if [ "$IP6T_block" == 'true' ]; then
+	if $IPT -t nat -S |grep -q -E "REDIRECT.+($Listen_PORT|$Route_PORT)$" ; then
 		return 0
 	else
 		return 1
 	fi
+else
+	if $IPT -t nat -S |grep -q -E "REDIRECT.+($Listen_PORT|$Route_PORT)$" \
+	|| $IP6T -t nat -S |grep -q -E "REDIRECT.+($Listen_PORT|$Route_PORT)$"; then
+		return 0
+	else
+		return 1
+	fi
+fi
 }
 
 server_check() {

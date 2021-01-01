@@ -1,15 +1,16 @@
 #!/system/bin/sh
-MODDIR=/data/adb/modules/smartdns
-[ ! -d $ROOT ] && { echo "${MODDIR##\/*\/}: Module disabled."; exit 1; }
+#	<MODID>
+MODDIR=/data/adb/modules/<MODID>
+[ ! -d $ROOT ] && { echo -e "${MODDIR##\/*\/}: Module not init.\n Maybe you disabled the module"; exit 1; }
 
 usage() {
 cat << HELP
 Valid options are:
-	-start
+	start
 		Start Service
-	-stop
+	stop
 		Stop Service
-	-status
+	status
 		Service Status
 	-clean
 		Restore origin rules and stop server
@@ -35,11 +36,6 @@ HELP
 # 主控
 iptrules_on() {
 	[ -z "$mode" ] && return 0
-	if grep -q '^bind-tcp' $DATA_DIR/smartdns.conf ; then
-		redirect_p='udp tcp'
-	else
-		redirect_p='udp'
-	fi
 	iptrules_load $IPT -A
 	ip6trules_switch -A
 }
@@ -47,7 +43,6 @@ iptrules_on() {
 iptrules_off() {
 	[ -z "$mode" ] && return 0
 	local i=0
-	redirect_p='udp tcp'
 	while iptrules_check
 	do
 		iptrules_load $IPT -D
@@ -56,6 +51,7 @@ iptrules_off() {
 	done
 }
 
+#IPv6选择支
 ip6trules_switch() {
 	if [ "$IP6T_block" == 'true' ]; then
 		iptrules_accept $IP6T 'filter' $1 'udp'
@@ -67,7 +63,7 @@ ip6trules_switch() {
 	fi
 }
 
-# 加载
+# 加载规则
 iptrules_load() {
 	echo "[Info]: ${1##\/*\/} $2"
 	# [iptables/ip6tables]  [-A/-D]
@@ -92,9 +88,10 @@ iptrules_load() {
 ####	代理模式目前仍有问题
 		if echo $mode |grep -q 'P'; then
 			if [ "$1" == "$IPT" ]; then
+				#获取本机IP
 				for IP in "$(ifconfig |grep "inet addr" |grep -v ":127" |grep "Bcast" |awk '{print $2}' |awk -F: '{print $2}')"
 				do
-					# 忘记什么操作了
+					#忘记什么操作了
 					[ "$strict" != 'true' ] && echo $IP |grep -q -E '(^192\.168\.*)|(^10\.*)' && continue
 					# IPv4 EXTERNAL
 					$1 -t nat $2 PREROUTING -p $IPP -d "$IP" --dport 53 -j REDIRECT --to-ports $Route_PORT
@@ -106,13 +103,14 @@ iptrules_load() {
 	done
 }
 
+# rfc1918 filter
 iptrules_strict(){
 	[ "$strict" != 'true' ] && return 0
 	# [iptables]  [-A/-D]  [udp/tcp]
-	local Intranet
 
 	$1 -t filter $2 INPUT -p $3 -s "127.0.0.1" --dport $Listen_PORT -j ACCEPT
 	if echo $mode |grep -q 'P'; then
+		local Intranet
 		for Intranet in '192.168.0.0/16' '10.0.0.0/8'; do
 			$1 -t filter $2 INPUT -p $3 -s "$Intranet" --dport $Route_PORT -j ACCEPT
 		done
@@ -120,15 +118,15 @@ iptrules_strict(){
 	fi
 	$1 -t filter $2 INPUT -p $3 --dport $Listen_PORT -j DROP
 }
-
+# 放行特定UID
 iptrules_accept() {
 	[ -z "$pkg" ] && return 0
 	# [iptables/ip6tables]  [raw->mangle->nat->filter]  [-A/-D]  [udp/tcp]
 	local uid
-
 	for uid in $pkg
 	do
-		echo $uid |grep -q -i '[a-z]' && uid=$(grep -m1 -i $uid /data/system/packages.list |cut -d' ' -f2); [ -z "$uid" ] && continue
+		echo $uid |grep -q -i '[a-z]' && uid=$(grep -m1 -i $uid /data/system/packages.list |cut -d' ' -f2)
+		[ -z "$uid" ] && continue
 		$1 -t $2 $3 OUTPUT -p $4 --dport 53 -m owner --uid-owner $uid -j ACCEPT
 	done
 }
@@ -141,7 +139,7 @@ get_args() {
 			usage 0
 			;;
 
-		-start) # 启动
+		start) # 启动
 			#貌似没必要
 			case "$2" in
 				ser*)
@@ -165,12 +163,12 @@ get_args() {
 			esac
 			;;
 
-		-stop) # 停止
+		stop) # 停止
 			iptrules_off
 			server_stop
 			;;
 
-		-status) # 检查状态
+		status) # 检查状态
 			service_check
 			exit $?
 			;;
@@ -282,14 +280,28 @@ get_args() {
 	. $MODDIR/lib.sh || { echo '[Error]: lib.sh not exist.'; exit 1; }
 	. $SET_FILE || { echo '[Error]: script settings not exist.'; exit 1; }
 
+	if [ "$log" == "true" ]; then
+	LOG_PATH="$DATA_DIR/script.log"
+	[ -f $LOG_PATH ] && rm $LOG_PATH
+	exec 1>>$LOG_PATH 2>&1
+	set -x
+	fi
+
+	#无主端口 停止
 	[ -z "$Listen_PORT" ] && { echo '[Error]: Listen_PORT not set.'; exit 1; }
+	#代理端口未设置 警告
 	echo $mode |grep -q 'P' && [ -z "$Route_PORT" ] && { mode=${mode//P/}; echo '[Warning]: Route_PORT not set.'; }
+	#tun接口
 	[ "$vpn" == 'true' ] && vpn='' || vpn='! -o tun+'
+	#无tcp端口设置 不加载tcp规则
+	grep -q '^bind-tcp' $DATA_DIR/smartdns.conf && redirect_p='udp tcp' || redirect_p='udp'
 
 	if [ "${1}" == 'elf' ]; then
+		#直接通信
 		shift
 		$CORE_DIR/$CORE_BINARY $*
 	elif [ "$1" == 'bin' ]; then
+		#带配置通信
 		shift
 		$CORE_BOOT $*
 	else

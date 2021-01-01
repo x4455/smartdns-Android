@@ -1,8 +1,8 @@
 #!/system/bin/sh
 MODDIR=${0%/*}
-LOG_PATH="$MODDIR/boot.log"
-[ -f $LOG_PATH ] && rm $LOG_PATH
-exec 1>>$LOG_PATH 2>&1
+BOOT_LOG="$MODDIR/boot.log"
+[ -f $BOOT_LOG ] && rm $BOOT_LOG
+exec 1>>$BOOT_LOG 2>&1
 set -x
 
 nohup sh $MODDIR/init.sh &

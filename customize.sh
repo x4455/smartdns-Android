@@ -11,7 +11,7 @@ SKIPUNZIP=1
 	#架构
 	case $ARCH in
 	arm|arm64|x86|x64)
-		BINARY_PATH=$TMPDIR/$MODID-$ARCH ;;
+		BINARY_PATH=$TMPDIR/core.$ARCH ;;
 	*)
 		abort "[Error]: $ARCH are unsupported architecture." ;;
 	esac
@@ -25,14 +25,21 @@ SKIPUNZIP=1
 	unzip -o "$MODPATH/binary/ca-certificates.zip" -d $MODPATH/binary >&2
 	rm $MODPATH/binary/ca-certificates.zip
 
-	#工具
+	#脚本
 	unzip -oj "$ZIPFILE" 'common/*' -d $MODPATH >&2
+	#插件区
 	unzip -o "$ZIPFILE" 'tools/*' -x 'tools/placeholder' -d $MODPATH >&2
 
 	#创建/etc/resolv.conf
-	etcPATH=$(ls -l /etc |awk -F ' -> ' '{print $2}')
-	mkdir -p $MODPATH$etcPATH
-	echo -e 'nameserver 9.9.9.9\nnameserver 208.67.222.222' > $MODPATH$etcPATH/resolv.conf
+	etcPATH=$(ls -l /etc |awk -F ' -> ' '{print $2}' || echo 404)
+	if echo $etcPATH |grep -q -e '^\/system' ; then
+		mkdir -p $MODPATH$etcPATH
+		echo -e 'nameserver 9.9.9.9\nnameserver 208.67.222.222' > $MODPATH$etcPATH/resolv.conf
+	else
+		ui_print '[错误]: 文件结构未适配，请联系作者寻求适配。'
+		ui_print '[Error]: The file structure is not adapted, Please contact the author for adaptation.'
+		abort "$(ls -l /etc)"
+	fi
 
 	#为lib提供路径转换
 	MODDIR=$MODPATH
@@ -53,16 +60,21 @@ SKIPUNZIP=1
 	else
 		abort "[Error]: $ARCH binary file missing."
 	fi
+	sed -i -e "s/<MODID>/${MODID}/" $MODPATH/script.sh
 
-	#配置文件
-	set_conf() {
+	#脚本配置示例
+	script_conf() {
 	ui_print '- Try to inherit settings'
 	ui_print '(!!!) Unexpected errors can occur.'
 	unzip -oj "$ZIPFILE" 'config/script.conf' -d $TMPDIR >&2
-	cp $TMPDIR/script.conf $DATA_INTERNAL_DIR/example-script.conf
+	cp -f $TMPDIR/script.conf $DATA_INTERNAL_DIR/example-script.conf
+
+	#继承插件启动
+	cp -af $oldPATH/tools/* $MODPATH/tools/
 	}
-	# 若配置路径已存在，则更新后释放示例文件
+
 	if [ ! -d $DATA_INTERNAL_DIR ]; then
+		#若配置路径不存在
 		ui_print ''
 		ui_print '(!!!) Requires you to set the configuration yourself.'
 		ui_print '(!!!) 需要自行设置配置。'
@@ -72,18 +84,20 @@ SKIPUNZIP=1
 		cp $TMPDIR/config/* $DATA_INTERNAL_DIR/
 		sleep 5
 	elif [ "$oldver" != "$ver" ]; then
+		#若核心更新，刷新示例
 		unzip -oj "$ZIPFILE" 'config/smartdns.conf' -d $TMPDIR >&2
-		cp $TMPDIR/smartdns.conf $DATA_INTERNAL_DIR/example-smartdns.conf
-		set_conf
+		cp -f $TMPDIR/smartdns.conf $DATA_INTERNAL_DIR/example-smartdns.conf
+		script_conf
 	else
-		set_conf
+		#仅刷新脚本示例
+		script_conf
 	fi
 
 	ui_print '- Setting permissions'
 	set_perm_recursive $MODPATH 0 0 0755 0644
-	set_perm_recursive $CORE_INTERNAL_DIR 0 0 0755 0755
-	set_perm_recursive $CORE_INTERNAL_DIR/CA 0 0 0755 0644
-	set_perm_recursive $DATA_INTERNAL_DIR 0 0 0755 0644
-	for file in $(find $MODPATH -maxdepth 2 -type f -name *'.sh'); do
+	set_perm_recursive $CORE_INTERNAL_DIR 0 0 0750 0750
+	set_perm_recursive $CORE_INTERNAL_DIR/CA 0 0 0750 0640
+	set_perm_recursive $DATA_INTERNAL_DIR 0 $(id -g inet) 0750 0640
+	for file in $(find $MODPATH -maxdepth 2 -type f -name '*.sh'); do
 		set_perm $file 0 0 0754
 	done
