@@ -13,7 +13,7 @@ rm -r $DATA_INTERNAL_DIR/log
 mkdir $DATA_INTERNAL_DIR/log
 mkdir -p "$DATA_DIR"
 mkdir -p "$CORE_DIR"
-ln -fs $MODDIR/script.sh /sbin/smartdns
+ln -fs $MODDIR/script.sh /system/bin/smartdns
 mount -o bind "$CORE_INTERNAL_DIR" "$CORE_DIR"
 mount -o bind "$DATA_INTERNAL_DIR" "$DATA_DIR"
 
