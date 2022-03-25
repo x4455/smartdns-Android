@@ -1,0 +1,45 @@
+# GitHub520 Host Start
+address /alive.github.com/140.82.114.25
+address /live.github.com/140.82.113.26
+address /github.githubassets.com/185.199.108.154
+address /central.github.com/140.82.113.22
+address /desktop.githubusercontent.com/185.199.108.133
+address /assets-cdn.github.com/185.199.108.153
+address /camo.githubusercontent.com/185.199.108.133
+address /github.map.fastly.net/185.199.108.133
+address /github.global.ssl.fastly.net/199.232.69.194
+address /gist.github.com/140.82.114.4
+address /github.io/185.199.108.153
+address /github.com/140.82.114.4
+address /github.blog/192.0.66.2
+address /api.github.com/140.82.113.6
+address /raw.githubusercontent.com/185.199.108.133
+address /user-images.githubusercontent.com/185.199.108.133
+address /favicons.githubusercontent.com/185.199.108.133
+address /avatars5.githubusercontent.com/185.199.108.133
+address /avatars4.githubusercontent.com/185.199.108.133
+address /avatars3.githubusercontent.com/185.199.108.133
+address /avatars2.githubusercontent.com/185.199.108.133
+address /avatars1.githubusercontent.com/185.199.108.133
+address /avatars0.githubusercontent.com/185.199.108.133
+address /avatars.githubusercontent.com/185.199.108.133
+address /codeload.github.com/140.82.113.10
+address /github-cloud.s3.amazonaws.com/52.217.199.161
+address /github-com.s3.amazonaws.com/52.217.102.36
+address /github-production-release-asset-2e65be.s3.amazonaws.com/54.231.197.233
+address /github-production-user-asset-6210df.s3.amazonaws.com/54.231.201.49
+address /github-production-repository-file-5c1aeb.s3.amazonaws.com/52.217.227.161
+address /githubstatus.com/185.199.108.153
+address /github.community/64.71.144.202
+address /github.dev/23.100.27.125
+address /media.githubusercontent.com/185.199.108.133
+address /cloud.githubusercontent.com/185.199.108.133
+address /objects.githubusercontent.com/185.199.108.133
+
+
+# Update time: 2022-02-16T18:05:27+08:00
+# Update time: 2022-02-16T18:05:27+08:00
+# Update url: https://raw.hellogithub.com/hosts
+# Star me: https://github.com/521xueweihan/GitHub520
+# Star me: https://github.com/521xueweihan/GitHub520
+# GitHub520 Host End
