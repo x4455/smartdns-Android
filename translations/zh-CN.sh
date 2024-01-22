@@ -1,7 +1,7 @@
 #!/system/bin/sh
 print_help() {
 cat << HELP
-用法: smartdns [ OPTIONS ]
+用法: $CORE_NAME [ OPTIONS ]
   start
     启动服务
   run-mod
@@ -11,14 +11,14 @@ cat << HELP
   status
     服务状态
   clean
-    恢复原始规则并停止服务器
-  -m, --mode [ local / proxy / server ]
-    ├─ local: Proxy local only
-    ├─ proxy: Proxy local and other query
-    └─ server: Expecting the server only
+    恢复原始防火墙规则并停止服务器
+  --mode [ local / proxy / server ]
+    ├─ local: 代理本地查询
+    ├─ proxy: 代理外部查询
+    └─ server: 仅运行服务器
 HELP
 exit $1
-# Usage: smartdns [ OPTIONS ]
+# Usage: $CORE_NAME [ OPTIONS ]
 #   start
 #     Start service
 #   run-mod
@@ -28,22 +28,22 @@ exit $1
 #   status
 #     Service status
 #   clean
-#     Restore origin rules and stop server
-#   -m, --mode [ local / proxy / server ]
-#     ├─ local: Proxy local only
-#     ├─ proxy: Proxy local and other query
-#     └─ server: Expecting the server only
+#     Restore origin iptables rules and stop server
+#   --mode [ local / proxy / server ]
+#     ├─ local: Proxy local query
+#     ├─ proxy: Proxy other query
+#     └─ server: Expecting the server
 }
 
 # 服务 状态报告
 
 print_status_server_already_running() {
-	echo '[信息]: 服务器 已启动'
+	echo '[信息]: 服务器 已经启动'
 	# echo '[Info]: server is running.'
 }
 
 print_status_server_not_running() {
-	echo '[信息]: 服务器 已停止'
+	echo '[信息]: 服务器 已经停止'
 	# echo '[Info]: server is stopped.'
 }
 
@@ -75,11 +75,6 @@ print_server_start_success(){
 }
 
 # 服务 程序 停止报告
-
-print_server_stop_stopped(){
-	echo '[信息]: 服务器 已经停止'
-	# echo '[Info]: server is stopped.'
-}
 
 print_server_stop_failed(){
 	echo '[错误]: 服务器 停止失败'
@@ -121,6 +116,6 @@ print_listenPort_not_set(){
 }
 
 print_iptRules_remove_errors(){
-	echo -e '[错误]: 防火墙规则 移除出错\n[信息]: 运行 \`smartdns -clean\` 以重置网络设置'
-	# echo -e '[Error]: iptrules remove error.\n[Info]: Run \`smartdns -clean\` to reset network settings.'
+	echo -e "[错误]: 防火墙规则 移除出错\n[信息]: 运行 \`$CORE_NAME -clean\` 以重置网络设置"
+	# echo -e "[Error]: iptrules remove error.\n[Info]: Run \`$CORE_NAME -clean\` to reset network settings."
 }

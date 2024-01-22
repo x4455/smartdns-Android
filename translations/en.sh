@@ -1,21 +1,19 @@
 #!/system/bin/sh
 print_help() {
 cat << HELP
-Usage: smartdns [ OPTIONS ]
+Usage: $CORE_NAME [ OPTIONS ]
   start
     Start service
-  run-mod
-    Run Mod script
   stop
     Stop service
   status
     Service status
   clean
     Restore origin rules and stop server
-  -m, --mode [ local / proxy / server ]
+  --mode [ local / proxy / server ]
     ├─ local: Proxy local only
-    ├─ proxy: Proxy local and other query
-    └─ server: Expecting the server only
+    ├─ proxy: Proxy other query
+    └─ server: Expecting the server
 HELP
 exit $1
 }
@@ -54,10 +52,6 @@ print_server_start_success(){
 
 # 服务 程序 停止报告
 
-print_server_stop_stopped(){
-	echo '[Info]: server is stopped.'
-}
-
 print_server_stop_failed(){
 	echo '[Error]: stop server failed.'
 }
@@ -91,5 +85,5 @@ print_listenPort_not_set(){
 }
 
 print_iptRules_remove_errors(){
-	echo -e '[Error]: iptrules remove error.\n[Info]: Run \`smartdns -clean\` to reset network settings.'
+	echo -e "[Error]: iptrules remove error.\n[Info]: Run \`$CORE_NAME -clean\` to reset network settings."
 }

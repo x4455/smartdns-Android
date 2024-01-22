@@ -1,7 +1,7 @@
 id=smartdns
 name=SmartDNS
-version=3.0.0 (<VER>)
-versionCode=1
+version=β 3.1.0 (<VER>)
+versionCode=2
 author=pymumu (module by x4455)
 description=基于 Shell 脚本控制 SmartDNS 的启动与停止以及达到某些目的。
-updateJson=https://github.com/x4455/smartdns-Android/releases/latest/download/updateinfo.json
+updateJson=https://github.com/x4455/smartdns-Android/raw/master/updateinfo.json

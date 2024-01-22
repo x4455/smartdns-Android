@@ -3,6 +3,9 @@ MODDIR=${0%/*}
 cd $MODDIR
 . $MODDIR/constant.sh
 
+# 日志清理
+rm $BOOT_LOG $RUN_LOG $CROND_LOG
+
 # 日志生成
 . $SCRIPT_CONF
 if [ "$log" == "yes" ]; then
@@ -11,8 +14,6 @@ if [ "$log" == "yes" ]; then
 	set -x
 fi
 
-# 启动任务
-sh command.sh --bootTask
 # 启动服务
 sh command.sh start
 

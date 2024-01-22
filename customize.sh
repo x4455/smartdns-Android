@@ -48,23 +48,12 @@ SKIPUNZIP=1
 	# binary 文件解压
 	unzip -oj "$ZIPFILE" 'binary/*' -d $TMPDIR >&2
 	# 证书库
-	###unzip -oj "$ZIPFILE" 'binary/ca-certificates.zip' -d $TMPDIR >&2
 	unzip -o "$TMPDIR/ca-certificates.zip" -d $MODPATH/binary >&2
 
 	# 架构判断
 	case $ARCH in
-	arm|x86|x64)
-		#sed -i "s/boot_server/boot_server/" $MODPATH/command.sh
-		# 固定UID值
-		sed -i "s/# 启动方式/#固定UID\nreadonly ServerUID='root'\n# 启动方式\n/" $MODPATH/constant.sh
-		# 移除用户设定值
-		sed -i "/# Change the program UID/,/ServerUID='root'/d" $MODPATH/defaults.sh
-		;;
-	arm64)
-		# 使用内置 setuidgid
-		###unzip -o "$ZIPFILE" 'binary/setuidgid' -d $MODPATH >&2
-		cp $TMPDIR/setuidgid $MODPATH/binary
-		sed -i "s/boot_server/boot_setuidgid/" $MODPATH/command.sh
+	arm|arm64)
+		sleep 1
 		;;
 	*)
 		abort "[Error]: $ARCH are unsupported architecture." ;;
@@ -73,7 +62,6 @@ SKIPUNZIP=1
 
 
 	#核心
-	###unzip -oj "$ZIPFILE" 'binary/*' -x 'binary/ca-certificates.zip' -d $TMPDIR >&2
 	if [ -f "$BINARY_PATH" ]; then
 		# 版本信息写入到模块信息
 		chmod 0755 $BINARY_PATH
@@ -109,16 +97,27 @@ SKIPUNZIP=1
 		cp $MODPATH/defaults.sh $SCRIPT_CONF
 	else
 		ui_print "****************"
-		ui_print '(!) 尝试继承模块数据。如果出错,请使用示例文件重新配置。'
-		ui_print '(!) Try inheriting the module data. If something goes wrong, reconfigure it.'
+		ui_print '(!) 尝试继承模块设置。如果出错,请使用示例文件重新配置。'
+		ui_print '(!) Try inheriting the module setting. If something goes wrong, reconfigure it.'
 		ui_print "****************"
-		# 强制更新crond&lib
-		cp -f $TMPDIR/scripts/bootTask/crond.sh $SCRIPT_INTERNAL_DIR/bootTask/crond.sh 
-		cp -f $TMPDIR/scripts/lib.sh $SCRIPT_INTERNAL_DIR/lib.sh
-		# 更新程序示例配置
-		cp -f $TMPDIR/config/smartdns.conf $DATA_INTERNAL_DIR/example-smartdns.conf
-		# 更新脚本示例配置
-		cp -f $MODPATH/defaults.sh $DATA_INTERNAL_DIR/example-script_conf.sh
+		# 配置更新
+		if [ -f $DATA_INTERNAL_DIR/reset ]; then
+			rm -r $DATA_INTERNAL_DIR
+			mkdir -p $DATA_INTERNAL_DIR
+			cp -a $TMPDIR/config/* $DATA_INTERNAL_DIR/
+			cp $MODPATH/defaults.sh $SCRIPT_CONF
+		else
+			# 更新程序示例配置
+			cp -f $TMPDIR/config/smartdns.conf $DATA_INTERNAL_DIR/example-smartdns.conf
+			# 更新脚本示例配置
+			cp -f $MODPATH/defaults.sh $DATA_INTERNAL_DIR/example-script_conf.sh
+		fi
+		# scripts 更新
+		if [ -f $SCRIPT_INTERNAL_DIR/reset ]; then
+			rm -r $SCRIPT_INTERNAL_DIR
+			mkdir -p $SCRIPT_INTERNAL_DIR
+			cp -rf $TMPDIR/scripts/* $SCRIPT_INTERNAL_DIR/
+		fi
 	fi
 
 	ui_print '- Setting permissions'
